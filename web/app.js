@@ -792,13 +792,8 @@
       table.appendChild(val);
     });
     box.appendChild(table);
-    box.appendChild(el("p", "legend-note",
-      "네 가지 중 하나라도 걸리면 그 칸은 나쁜 쪽 색을 따른다. "
-      + "여기에 기상청 특보가 더해진다(특보가 있으면 한 단계 더 나쁘게 본다). "
-      + "칸에 마우스를 올리면 그 색이 나온 근거가 전부 나온다."));
-    box.appendChild(el("p", "legend-note",
-      "※ 이 기준은 확정값이 아니다. 선박·화물·선사 기준에 맞게 "
-      + "weather_config.yaml 의 operational_thresholds 에서 고쳐 쓴다."));
+    /* 설명 문단은 넣지 않는다. 좁은 화면에서 자리만 차지했다.
+       (다시 넣고 싶으면 여기에 legend-note 를 붙이면 된다) */
   }
 
   // ---------------------------------------------------------------- 지도

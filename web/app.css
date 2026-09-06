@@ -381,12 +381,16 @@ table.grid thead th.gloc { z-index: 4; }
 table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
 
 /* ---------- 표 아래 판단 기준 ---------- */
-.legend {
-  margin-top: 10px; padding: 10px 12px;
+/* 표 아래 판단 기준 상자.
+   ★ 이름을 .legend 로 두면 안 된다. 지도 범례가 이미 그 이름을 쓰고
+     있고 거기엔 display:flex 가 걸려 있어서, 이 상자 내용이 통째로
+     가로로 짜부라진다(실제로 그랬다). */
+.gridlegend {
+  margin-top: 10px; padding: 12px 14px;
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius);
 }
-.legend-colors { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.legend-colors { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .legend-chip {
   padding: 3px 10px; border-radius: 999px;
   font-size: 12px; font-weight: 700;
@@ -396,11 +400,12 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
 }
 /* 항목 이름과 기준값을 두 칸으로 나눠 세로줄을 맞춘다. */
 .legend-rules {
-  display: grid; grid-template-columns: auto 1fr;
-  gap: 4px 10px; margin-bottom: 8px;
+  display: grid; grid-template-columns: 72px 1fr;
+  gap: 6px 12px; margin: 0;
 }
 .legend-key {
-  font-size: 12px; font-weight: 700; color: var(--ink-dim); white-space: nowrap;
+  font-size: 12px; font-weight: 700; color: var(--ink-dim);
+  white-space: nowrap; text-align: right;
 }
 .legend-val {
   font-size: 12px; color: var(--ink-dim);
@@ -408,11 +413,12 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
 }
 .legend-c { color: var(--warn-ink); font-weight: 700; }
 .legend-u { color: var(--bad-ink); font-weight: 700; }
+/* 설명 문단. 지금은 쓰지 않는다(화면이 좁아 방해가 됐다).
+   다시 넣고 싶으면 renderGridLegend 에서 legend-note 를 되살리면 된다. */
 .legend-note {
-  margin: 0 0 5px; font-size: 12px; line-height: 1.6; color: var(--ink-dim);
+  margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: var(--ink-dim);
   word-break: keep-all;
 }
-.legend-note:last-child { margin-bottom: 0; }
 
 /* ---------- 아래 탭 ---------- */
 .tabbar {
