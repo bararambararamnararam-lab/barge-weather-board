@@ -24,6 +24,7 @@
     location: null
   };
   var map = null, mapLayers = [];
+  var mapFitted = false;   /* 항로를 바꿀 때만 화면을 다시 맞춘다 */
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -177,7 +178,11 @@
                  r.short || r.id);
       b.type = "button";
       b.title = r.name;
-      b.onclick = function () { state.route = r.id; state.location = null; renderAll(); };
+      b.onclick = function () {
+        state.route = r.id; state.location = null;
+        mapFitted = false;      /* 새 항로에 맞춰 화면을 다시 잡는다 */
+        renderAll();
+      };
       box.appendChild(b);
     });
     $("appTitle").textContent = routeObj().name;
@@ -256,8 +261,8 @@
 
     var banner = $("summaryBanner");
     banner.innerHTML = "";
-    banner.appendChild(el("div", "lead",
-      fmtDay(FC.times[idx]) + " " + FC.times[idx].slice(11, 16) + " 기준"));
+    /* 기준 시각은 아래 시간 막대에 이미 크게 나오므로 여기서는 뺀다.
+       (두 군데 있으면 가운데 화면만 좁아진다) */
     [["u", "불가"], ["c", "조건"], ["n", "가능"], ["x", "자료없음"]].forEach(function (p) {
       if (!counts[p[0]]) return;
       banner.appendChild(el("div", "pill s-" + p[0], p[1] + " " + counts[p[0]] + "곳"));
@@ -674,7 +679,9 @@
     cols.forEach(function (i) {
       var t = FC.times[i], day = t.slice(5, 10).replace("-", "/");
       var th = el("th");
-      th.innerHTML = (day !== lastDay ? day : "") + "<br>" + t.slice(11, 16);
+      /* 시각은 '09:00' 대신 '9시' 로 쓴다. 열이 좁아지고 읽기도 쉽다. */
+      var hh = Number(t.slice(11, 13));
+      th.innerHTML = (day !== lastDay ? day : "") + "<br>" + hh + "시";
       lastDay = day;
       hr.appendChild(th);
     });
@@ -710,6 +717,56 @@
     var wrap = $("gridWrap");
     wrap.innerHTML = "";
     wrap.appendChild(table);
+
+    renderGridLegend();
+  }
+
+  /* 표 아래에 색이 무슨 뜻인지, 어떤 숫자로 갈리는지 적어 준다.
+     한계값은 meta.json 에서 그대로 가져오므로 설정을 고치면 같이 바뀐다. */
+  function renderGridLegend() {
+    var box = $("gridLegend");
+    if (!box) return;
+    box.innerHTML = "";
+
+    var row = el("div", "legend-colors");
+    [["n", "가능"], ["c", "조건부"], ["u", "불가"], ["x", "자료 없음"]]
+      .forEach(function (p) {
+        row.appendChild(el("span", "legend-chip s-" + p[0], p[1]));
+      });
+    box.appendChild(row);
+
+    var order = ["wind", "gust", "wave", "vis"];
+    var lines = [];
+    order.forEach(function (k) {
+      var t = META.thresholds[k];
+      if (!t || t.auto === false) return;
+      var unit = META.units[k] || "";
+      var name = META.labels[k] || k;
+      var parts = [];
+      if (t.caution_at !== null && t.caution_at !== undefined) {
+        parts.push("조건부 " + t.caution_at + unit + " 이상");
+      }
+      if (t.unavailable_at !== null && t.unavailable_at !== undefined) {
+        parts.push("불가 " + t.unavailable_at + unit + " 이상");
+      }
+      if (t.caution_below !== null && t.caution_below !== undefined) {
+        parts.push("조건부 " + t.caution_below + unit + " 미만");
+      }
+      if (t.unavailable_below !== null && t.unavailable_below !== undefined) {
+        parts.push("불가 " + t.unavailable_below + unit + " 미만");
+      }
+      if (parts.length) lines.push(name + " " + parts.join(" · "));
+    });
+
+    box.appendChild(el("p", "legend-note",
+      "운항 판단 기준 — " + lines.join(" / ")));
+    box.appendChild(el("p", "legend-note",
+      "네 가지 중 하나라도 걸리면 그 칸은 나쁜 쪽 색을 따른다. "
+      + "여기에 기상청 특보가 더해진다(특보가 있으면 한 단계 더 나쁘게 본다). "
+      + "칸에 마우스를 올리면 그 색이 나온 근거가 전부 나온다."));
+    box.appendChild(el("p", "legend-note",
+      "※ 이 기준은 확정값이 아니다. 선박·화물·선사 기준에 맞게 "
+      + "weather_config.yaml 의 operational_thresholds 에서 고쳐 쓴다."));
   }
 
   // ---------------------------------------------------------------- 지도
@@ -717,6 +774,8 @@
   /* 면을 칠할 때 쓰는 색. 점(동그라미)보다 연하게 해서 그 위의 항로와
      지점 표시가 묻히지 않게 한다. */
   var AREA_HEX = { n: "#2fa84f", c: "#e8b53a", u: "#e05545", x: "#9e9e9e" };
+  /* 지점 동그라미 반지름(픽셀). 풍향 막대가 이 밖에서 시작한다. */
+  var DOT_R = 7;
 
   /* 격자에서 '지금 지도에 보이는 시각'에 해당하는 칸 번호를 찾는다.
      격자는 3시간 간격이고 지점 예보는 1시간 간격이라 칸 수가 다르다.
@@ -804,6 +863,11 @@
          "Cannot read properties of undefined (reading 'min')" 로 죽는다.
          아래에서 fitBounds 로 항로에 맞게 다시 잡는다. */
       map.setView([35.0, 126.0], 6);
+      /* 배율이 바뀌면 풍향 막대를 다시 그린다.
+         막대를 픽셀로 계산하므로 배율이 달라지면 좌표가 어긋난다. */
+      map.on("zoomend", function () {
+        if (state.view === "map") renderMap();
+      });
     }
     mapLayers.forEach(function (l) { map.removeLayer(l); });
     mapLayers = [];
@@ -855,13 +919,21 @@
         label = v === null ? "—" : num(v) + " " + m.unit;
       }
 
+      /* 바람이 불어 가는 방향으로 막대를 뻗는다.
+
+         길이를 위도·경도(도)로 잡으면 지도를 축소했을 때 막대가 짧아져서
+         동그라미에 묻혀 버린다. 그래서 화면 픽셀로 계산한다.
+         동그라미 반지름 바깥에서 시작하므로 어느 배율에서도 겹치지 않는다. */
       if (s && s.wdir[idx] !== null && s.wind[idx]) {
         var rad = (s.wdir[idx] + 180) * Math.PI / 180;
-        var len = 0.10 + Math.min(s.wind[idx], 20) * 0.012;
-        var dLat = Math.cos(rad) * len;
-        var dLon = Math.sin(rad) * len / Math.cos(loc.lat * Math.PI / 180);
-        var arrow = L.polyline([[loc.lat, loc.lon], [loc.lat + dLat, loc.lon + dLon]],
-                               { color: color, weight: 3, opacity: .9 }).addTo(map);
+        var dx = Math.sin(rad), dy = -Math.cos(rad);   /* 화면 좌표: y 는 아래가 + */
+        var gap = DOT_R + 4;                            /* 동그라미 밖에서 시작 */
+        var len = 14 + Math.min(s.wind[idx], 20) * 1.5; /* 바람이 셀수록 길게 */
+        var c = map.latLngToLayerPoint([loc.lat, loc.lon]);
+        var arrow = L.polyline([
+          map.layerPointToLatLng(L.point(c.x + dx * gap, c.y + dy * gap)),
+          map.layerPointToLatLng(L.point(c.x + dx * (gap + len), c.y + dy * (gap + len)))
+        ], { color: color, weight: 3, opacity: .95 }).addTo(map);
         mapLayers.push(arrow);
       }
 
@@ -871,7 +943,8 @@
 
       var up = (i % 2 === 0);
       var mk = L.circleMarker([loc.lat, loc.lon], {
-        radius: 8, color: "#ffffff", weight: 2, fillColor: color, fillOpacity: 1
+        radius: DOT_R, color: "#ffffff", weight: 2,
+        fillColor: color, fillOpacity: 1
       }).addTo(map)
         .bindTooltip((i + 1) + " " + label, {
           permanent: true, direction: up ? "top" : "bottom",
@@ -881,8 +954,13 @@
       mapLayers.push(mk);
     });
 
-    if (allPts.length === 1) map.setView(allPts[0], 9);
-    else map.fitBounds(L.latLngBounds(allPts), { padding: [40, 40] });
+    /* 화면 맞추기는 항로를 처음 그릴 때만 한다.
+       배율을 바꿀 때마다 다시 맞추면 사용자가 확대한 것이 도로 풀린다. */
+    if (!mapFitted) {
+      if (allPts.length === 1) map.setView(allPts[0], 9);
+      else map.fitBounds(L.latLngBounds(allPts), { padding: [40, 40] });
+      mapFitted = true;
+    }
     setTimeout(function () { map.invalidateSize(); }, 60);
   }
 
@@ -910,6 +988,14 @@
   function syncTopHeight() {
     var h = document.querySelector(".top").offsetHeight;
     document.documentElement.style.setProperty("--top-h", h + "px");
+    /* 아래 시간 막대 높이도 실제로 재서 넣는다.
+       글꼴 크기나 화면 폭에 따라 달라지므로 숫자를 박아 두면 어긋난다. */
+    var tb = document.getElementById("timebar");
+    if (tb) {
+      var th = tb.offsetHeight;
+      document.documentElement.style.setProperty(
+        "--timebar-h", (th > 0 ? th : 56) + "px");
+    }
   }
 
   function updateGridNote() {
@@ -931,7 +1017,7 @@
   function renderAll() {
     renderChips();
     renderTimeBar();
-    renderSummary();
+    renderSummary();   /* 신호등은 머리말에 있어 어느 탭에서나 보인다 */
     updateGridNote();
     syncTopHeight();
     if (state.view === "map") renderMap();

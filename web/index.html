@@ -20,16 +20,8 @@
     <button id="reloadBtn" class="icon-btn" type="button" aria-label="새로고침">↻</button>
   </div>
   <nav class="chips" id="routeChips" aria-label="항로 선택"></nav>
-  <div class="timebar">
-    <button id="timePrev" class="step" type="button" aria-label="이전 시각">‹</button>
-    <div class="timebox">
-      <input id="timeRange" type="range" min="0" max="0" value="0" step="1"
-             aria-label="표시할 시각">
-      <div id="timeLabel" class="timelabel">—</div>
-    </div>
-    <button id="timeNext" class="step" type="button" aria-label="다음 시각">›</button>
-    <button id="timeNow" class="now" type="button">지금</button>
-  </div>
+  <!-- 요약(신호등)은 여기에 고정한다. 지도를 보든 표를 보든 늘 보인다. -->
+  <div id="summaryBanner" class="banner"></div>
 </header>
 
 <!-- ===== 본문 ===== -->
@@ -37,7 +29,6 @@
 
   <!-- 요약 화면 -->
   <section id="viewSummary" class="view">
-    <div id="summaryBanner" class="banner"></div>
     <div id="locList" class="cards"></div>
     <p class="foot-note" id="stalenessNote"></p>
     <p class="foot-note" id="sourceNote"></p>
@@ -88,11 +79,25 @@
   <section id="viewGrid" class="view" hidden>
     <nav class="chips scroll" id="gridChips" aria-label="표 항목 선택"></nav>
     <div id="gridWrap" class="gridwrap"></div>
+    <div id="gridLegend" class="legend"></div>
   </section>
 
 </main>
 
-<!-- ===== 아래 고정 탭 (모바일) ===== -->
+<!-- ===== 아래 고정: 시간 막대 + 탭 =====
+     시간 막대를 아래에 둔 이유: 지도를 보며 시각을 옮길 때
+     엄지로 바로 닿는 자리가 화면 아래쪽이기 때문이다. -->
+<div class="timebar" id="timebar">
+  <button id="timePrev" class="step" type="button" aria-label="이전 시각">‹</button>
+  <div class="timebox">
+    <input id="timeRange" type="range" min="0" max="0" value="0" step="1"
+           aria-label="표시할 시각">
+    <div id="timeLabel" class="timelabel">—</div>
+  </div>
+  <button id="timeNext" class="step" type="button" aria-label="다음 시각">›</button>
+  <button id="timeNow" class="now" type="button">지금</button>
+</div>
+
 <nav class="tabbar" id="tabbar" aria-label="화면 전환">
   <button data-view="summary" class="tab on" type="button"><span>목록</span></button>
   <button data-view="map" class="tab" type="button"><span>지도</span></button>

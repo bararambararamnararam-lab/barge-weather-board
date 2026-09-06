@@ -21,6 +21,7 @@
 
   --top-h: 132px;
   --tab-h: 56px;
+  --timebar-h: 56px;
   --radius: 12px;
 }
 
@@ -81,7 +82,12 @@ html, body {
 }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
-.timebar { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.timebar {
+  position: fixed; left: 0; right: 0; bottom: var(--tab-h); z-index: 30;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px) * 0);
+  background: var(--card); border-top: 1px solid var(--line);
+}
 .timebox { flex: 1; min-width: 0; }
 .timelabel {
   font-size: 12px; color: var(--ink-dim); text-align: center;
@@ -121,7 +127,7 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
 /* ---------- 본문 ---------- */
 #main {
   padding: calc(var(--top-h) + 6px) 10px
-           calc(var(--tab-h) + env(safe-area-inset-bottom) + 12px);
+           calc(calc(var(--tab-h) + var(--timebar-h)) + env(safe-area-inset-bottom) + 12px);
   max-width: 1400px; margin: 0 auto;
 }
 /* hidden 속성은 어떤 클래스보다 세다.
@@ -134,8 +140,8 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
 
 .banner {
   display: flex; gap: 6px; flex-wrap: wrap;
-  background: var(--card); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px;
+  background: transparent; border: 0;
+  border-radius: 0; padding: 0; margin: 6px 0 0;
 }
 .banner .pill {
   padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
@@ -338,10 +344,28 @@ table.grid thead th {
 }
 table.grid td.gloc, table.grid th.gloc {
   position: sticky; left: 0; z-index: 3; background: var(--card);
-  text-align: left; font-weight: 700; min-width: 168px; white-space: normal;
+  text-align: left; font-weight: 700; white-space: nowrap;
+  min-width: 96px; max-width: 128px;
+  overflow: hidden; text-overflow: ellipsis;
 }
 table.grid thead th.gloc { z-index: 4; }
 table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
+
+/* ---------- 표 아래 판단 기준 ---------- */
+.legend {
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.legend-colors { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.legend-chip {
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+}
+.legend-note {
+  margin: 0 0 5px; font-size: 12px; line-height: 1.6; color: var(--ink-dim);
+}
+.legend-note:last-child { margin-bottom: 0; }
 
 /* ---------- 아래 탭 ---------- */
 .tabbar {
@@ -395,6 +419,9 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
 
   .tabbar { position: static; border-top: 0; background: transparent;
             padding: 0 0 10px; }
+  /* 넓은 화면에서는 아래 고정을 풀고 머리말 아래에 붙인다. */
+  .timebar { position: static; border-top: 0; background: transparent;
+             padding: 0; margin-top: 8px; }
   .tab { height: 40px; flex: 0 0 auto; padding: 0 18px; }
 
   /* 지점 카드는 넓은 화면에서도 한 줄에 하나씩 둔다.
