@@ -420,6 +420,58 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
   word-break: keep-all;
 }
 
+/* ---------- 지난 기록 ---------- */
+.histbox {
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); font-size: 12px;
+}
+.histbox summary {
+  cursor: pointer; font-weight: 700; color: var(--ink-dim);
+  font-size: 12.5px; padding: 2px 0;
+}
+.histbox[open] summary { margin-bottom: 10px; }
+.hist-title {
+  font-size: 12px; font-weight: 700; color: var(--ink);
+  margin: 12px 0 6px;
+}
+.hist-title:first-child { margin-top: 0; }
+.hist-none { color: var(--ink-dim); padding: 4px 0; }
+
+/* 지난 실황: 시각 + 판정 + 값 */
+.hist-obs { display: grid; grid-template-columns: auto auto 1fr; gap: 4px 8px; }
+.hist-when {
+  color: var(--ink-dim); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.hist-dot {
+  width: 18px; text-align: center; border-radius: 4px;
+  font-size: 11px; font-weight: 700;
+}
+.hist-val { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+
+/* 예보 이력: 시각별로 판정이 어떻게 바뀌었나 */
+.hist-fc { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; }
+.hist-marks { display: flex; gap: 3px; }
+.hist-mark {
+  width: 14px; height: 14px; border-radius: 3px;
+  font-size: 9px; line-height: 14px; text-align: center; font-weight: 700;
+}
+.hist-legend { color: var(--ink-dim); margin-top: 8px; line-height: 1.6; }
+
+/* 특보 이력 */
+.hist-warn { display: flex; flex-direction: column; gap: 6px; }
+.hist-warn-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--line);
+}
+.hist-warn-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.hist-warn-what { font-weight: 700; color: var(--ink); }
+.hist-warn-when {
+  color: var(--ink-dim); white-space: nowrap;
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+
 /* ---------- 아래 탭 ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 1220;

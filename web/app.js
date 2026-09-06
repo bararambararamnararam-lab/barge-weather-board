@@ -13,7 +13,7 @@
 (function () {
   "use strict";
 
-  var META = null, FC = null, WARN = null, GRID = null;
+  var META = null, FC = null, WARN = null, GRID = null, HIST = null;
   var gridLayer = null, gridCells = [], gridOn = true;
   var state = {
     route: null,
@@ -150,10 +150,17 @@
       state.timeIndex = nowIndex();
       // 격자는 없을 수도 있다(설정에서 껐거나 아직 안 받았을 때).
       // 없어도 나머지 화면은 그대로 동작해야 하므로 실패를 조용히 넘긴다.
-      return fetch("data/grid.json" + bust)
+      /* 격자와 과거 기록은 없을 수도 있다(설정에서 껐거나 아직 안 받았을 때).
+         없어도 나머지 화면은 그대로 동작해야 하므로 실패를 조용히 넘긴다. */
+      var g1 = fetch("data/grid.json" + bust)
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (g) { GRID = g; gridCells = []; gridLayer = null; })
         .catch(function () { GRID = null; });
+      var g2 = fetch("data/history.json" + bust)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (h) { HIST = h; })
+        .catch(function () { HIST = null; });
+      return Promise.all([g1, g2]);
     });
   }
 
@@ -561,6 +568,102 @@
       + "기다리는 것으로 계산합니다. 지나가는 시각의 예보를 그때그때 반영합니다."));
   }
 
+  /* ======================================================================
+     지난 기록
+
+     자료는 DB 에 계속 쌓이고 있는데 화면에서 볼 길이 없었다.
+     탭을 늘리는 대신 이미 있는 자리에 접어서 넣는다.
+       지점 상세 : 그 지점의 과거 실황 + 예보 이력
+       특보 탭   : 특보가 언제 떴다 풀렸나
+     ====================================================================== */
+
+  function histDot(ch) {
+    var e = el("span", "hist-dot s-" + (ch === "-" ? "x" : ch));
+    e.textContent = ch === "-" ? "" : "";
+    return e;
+  }
+
+  function renderDetailHistory(locId) {
+    var box = $("detailHistBody");
+    var wrap = $("detailHistory");
+    if (!box || !wrap) return;
+    box.innerHTML = "";
+
+    if (!HIST) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+
+    /* ---- 실제로 있었던 날씨 ---- */
+    box.appendChild(el("div", "hist-title",
+      "실제로 있었던 날씨 (최근 " + HIST.days + "일)"));
+    var obs = (HIST.obs || {})[locId] || [];
+    if (!obs.length) {
+      box.appendChild(el("div", "hist-none",
+        "아직 쌓인 기록이 없습니다. 수집이 몇 번 돌면 채워집니다."));
+    } else {
+      var g = el("div", "hist-obs");
+      obs.slice().reverse().forEach(function (r) {
+        g.appendChild(el("span", "hist-when", fmtTime(r[0])));
+        g.appendChild(el("span", "hist-dot s-" + r[1],
+          META.status_labels[r[1]] ? META.status_labels[r[1]].charAt(0) : ""));
+        var parts = [];
+        if (r[2] !== null) parts.push("풍속 " + r[2]);
+        if (r[3] !== null) parts.push("돌풍 " + r[3]);
+        if (r[4] !== null) parts.push("파고 " + r[4]);
+        g.appendChild(el("span", "hist-val", parts.join(" · ") || "—"));
+      });
+      box.appendChild(g);
+    }
+
+    /* ---- 예보가 어떻게 바뀌었나 ---- */
+    var runs = HIST.runs || [];
+    var fc = (HIST.fc || {})[locId] || {};
+    var keys = Object.keys(fc).sort();
+    if (runs.length > 1 && keys.length) {
+      box.appendChild(el("div", "hist-title",
+        "예보가 어떻게 바뀌었나 (수집 " + runs.length + "번)"));
+      var t = el("div", "hist-fc");
+      keys.slice(0, 16).forEach(function (k) {
+        t.appendChild(el("span", "hist-when", fmtTime(k)));
+        var marks = el("span", "hist-marks");
+        fc[k].split("").forEach(function (ch) {
+          marks.appendChild(el("i", "hist-mark s-" + (ch === "-" ? "x" : ch)));
+        });
+        t.appendChild(marks);
+      });
+      box.appendChild(t);
+      box.appendChild(el("div", "hist-legend",
+        "왼쪽이 오래된 예보, 오른쪽이 가장 최근 예보입니다. "
+        + "색이 오른쪽으로 갈수록 나빠지면 상황이 악화되는 중입니다. "
+        + "(수집 " + fmtTime(runs[0]) + " ~ " + fmtTime(runs[runs.length - 1]) + ")"));
+    }
+  }
+
+  function renderWarnHistory() {
+    var box = $("warnHistBody");
+    var wrap = $("warnHistory");
+    if (!box || !wrap) return;
+    box.innerHTML = "";
+
+    var rows = (HIST && HIST.warn) || [];
+    if (!rows.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+
+    var g = el("div", "hist-warn");
+    rows.slice(0, 60).forEach(function (w) {
+      var row = el("div", "hist-warn-row");
+      var what = el("span", "hist-warn-what",
+        w.reg + " · " + w.wrn + w.lvl + (w.cmd ? " (" + w.cmd + ")" : ""));
+      row.appendChild(what);
+      row.appendChild(el("span", "hist-warn-when",
+        fmtTime(w.from) + (w.to && w.to !== w.from ? " ~ " + fmtTime(w.to) : "")));
+      g.appendChild(row);
+    });
+    box.appendChild(g);
+    box.appendChild(el("div", "hist-legend",
+      "최근 " + HIST.days + "일간 기상청에서 받은 특보입니다. "
+      + "시각은 우리 프로그램이 그 특보를 처음 본 때와 마지막으로 본 때입니다."));
+  }
+
   function renderDetail() {
     var locId = state.location || routeObj().locations[0];
     state.location = locId;
@@ -573,6 +676,7 @@
       + (loc.zones.length ? " · 특보구역 " + loc.zones.join(", ") : "");
 
     renderEta(locId);
+    renderDetailHistory(locId);
 
     renderMetricChips("metricChips", state.metric, function (k) {
       state.metric = k; renderDetail();
@@ -636,6 +740,7 @@
   }
 
   function renderWarn() {
+    renderWarnHistory();
     var route = routeObj();
     var box = $("warnRoute");
     box.innerHTML = "";

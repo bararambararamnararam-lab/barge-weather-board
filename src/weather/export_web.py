@@ -290,6 +290,13 @@ def export(config: Config | None = None, verbose: bool = True) -> dict[str, Any]
             conn, list(cfg.locations), None, valid_from, valid_to)]
         warning_collected, warning_raw = fetch_latest_warnings(conn)
         warning_rows = [dict(r) for r in warning_raw]
+        # 과거 기록. 여기서 실패해도 나머지 화면은 그대로 나와야 한다.
+        try:
+            history = build_history(conn, cfg)
+        except Exception as exc:
+            history = None
+            if verbose:
+                print("[웹] 과거 기록 만들기 실패(나머지는 정상): %s" % exc)
 
     if not rows:
         raise RuntimeError(
@@ -318,10 +325,14 @@ def export(config: Config | None = None, verbose: bool = True) -> dict[str, Any]
         ],
     }
 
+    files = [("meta.json", meta),
+             ("forecast.json", forecast),
+             ("warnings.json", warnings_payload)]
+    if history is not None:
+        files.append(("history.json", history))
+
     written: dict[str, int] = {}
-    for name, payload in (("meta.json", meta),
-                          ("forecast.json", forecast),
-                          ("warnings.json", warnings_payload)):
+    for name, payload in files:
         path = DATA_DIR / name
         text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         path.write_text(text, encoding="utf-8")
@@ -335,6 +346,76 @@ def export(config: Config | None = None, verbose: bool = True) -> dict[str, Any]
         print("      위치: {}".format(DATA_DIR))
 
     return {"files": written, "times": len(times), "rows": len(rows)}
+
+
+def build_history(conn, config: Config, days: int = 3,
+                  keep_runs: int = 6) -> dict[str, Any]:
+    """과거 기록을 화면용으로 추린다.
+
+    세 가지를 담는다.
+
+      obs   지난 며칠 실제로 어땠나 (수집 시점의 현재값)
+      fc    "이 시각 날씨를 예전에는 뭐라고 했나" (예보가 어떻게 바뀌었나)
+      warn  기상특보가 언제 떴다가 언제 풀렸나
+
+    ★ 용량을 아끼려고 예보 이력은 '판정 글자' 만 남긴다.
+      값까지 다 넣으면 지점 15곳 x 시각 50칸 x 수집분 6개가 되어 파일이
+      몇 배로 커진다. 나빠지는 추세인지 보는 것이 목적이라 한 글자면 된다.
+      (n=가능 c=조건 u=불가 x=자료없음, -=그때는 아직 안 받은 시각)
+    """
+    tz = config.timezone
+    now = datetime.now(tz)
+    since = (now - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M")
+    now_key = now.strftime("%Y-%m-%dT%H:%M")
+
+    # ---- 1) 과거 실황 ----
+    obs: dict[str, list[list[Any]]] = {}
+    for r in conn.execute(
+            "SELECT * FROM observation WHERE observed_at >= ? "
+            "ORDER BY observed_at", (since,)).fetchall():
+        row = dict(r)
+        verdict = judge.judge_cell(config, row, [])
+        obs.setdefault(row["location_id"], []).append([
+            row["observed_at"],
+            STATUS_CHAR.get(verdict.status, "x"),
+            _round(row.get("wind_speed_ms"), 1),
+            _round(row.get("wind_gust_ms"), 1),
+            _round(row.get("wave_height_m"), 2),
+            _round(row.get("visibility_km"), 1),
+        ])
+
+    # ---- 2) 예보 이력 ----
+    runs = [r[0] for r in conn.execute(
+        "SELECT DISTINCT collected_at FROM forecast_snapshot "
+        "ORDER BY collected_at DESC LIMIT ?", (keep_runs,)).fetchall()]
+    runs.reverse()                       # 오래된 것 -> 최근 것
+
+    fc: dict[str, dict[str, str]] = {}
+    if runs:
+        marks = ", ".join("?" for _ in runs)
+        index = {c: i for i, c in enumerate(runs)}
+        blank = "-" * len(runs)
+        for r in conn.execute(
+                "SELECT * FROM forecast_snapshot WHERE collected_at IN (%s) "
+                "AND valid_time >= ? ORDER BY location_id, valid_time" % marks,
+                (*runs, now_key)).fetchall():
+            row = dict(r)
+            verdict = judge.judge_cell(config, row, [])
+            slot = fc.setdefault(row["location_id"], {})
+            cur = list(slot.get(row["valid_time"], blank))
+            cur[index[row["collected_at"]]] = STATUS_CHAR.get(verdict.status, "x")
+            slot[row["valid_time"]] = "".join(cur)
+
+    # ---- 3) 특보 이력 ----
+    warn = [{
+        "reg": r["reg_ko"], "wrn": r["wrn"], "lvl": r["lvl"], "cmd": r["cmd"],
+        "from": r["first_seen"], "to": r["last_seen"], "ef": r["tm_ef"],
+    } for r in conn.execute(
+        "SELECT * FROM kma_warning WHERE last_seen >= ? "
+        "ORDER BY last_seen DESC LIMIT 300", (since,)).fetchall()]
+
+    return {"generated_at": now_key, "days": days,
+            "runs": runs, "obs": obs, "fc": fc, "warn": warn}
 
 
 def write_grid(payload: dict[str, Any] | None, verbose: bool = True) -> int:
