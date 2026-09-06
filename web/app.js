@@ -261,6 +261,23 @@
       if (!counts[p[0]]) return;
       banner.appendChild(el("div", "pill s-" + p[0], p[1] + " " + counts[p[0]] + "곳"));
     });
+
+    /* 신호등 줄.
+       "불가 1곳 조건 3곳" 같은 숫자만으로는 '어디가' 나쁜지 알 수 없다.
+       항해 순서대로 칸을 늘어놓아 몇 번째 지점이 막히는지 바로 보이게 한다.
+       칸 번호는 카드 목록·지도의 번호와 같고, 누르면 그 지점으로 들어간다. */
+    var signals = el("div", "signals");
+    route.locations.forEach(function (locId, i) {
+      var s = series(locId);
+      var st = s ? s.st[idx] : "x";
+      var b = el("button", "signal s-" + st, String(i + 1));
+      b.type = "button";
+      b.title = META.locations[locId].name + " — " + META.status_labels[st];
+      b.onclick = function () { state.location = locId; show("detail"); };
+      signals.appendChild(b);
+    });
+    banner.appendChild(signals);
+
     if (worstRank >= 1 && worst) {
       banner.appendChild(el("div", "lead", "가장 나쁜 곳: " + worst));
     }

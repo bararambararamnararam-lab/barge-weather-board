@@ -93,7 +93,30 @@ html, body {
   background: transparent; color: var(--ink); font-size: 16px; cursor: pointer;
 }
 .now { font-size: 12px; font-weight: 700; }
-input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); height: 26px; }
+/* 시간 막대.
+   손잡이(동그라미)를 위아래로 길고 좌우로 좁은 막대 모양으로 바꾼다.
+   기본 동그라미는 지금 시각이 어디인지 눈에 잘 안 들어온다. */
+input[type=range] {
+  width: 100%; margin: 0; height: 30px;
+  -webkit-appearance: none; appearance: none; background: transparent;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px; background: var(--line);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 12px; height: 26px; border-radius: 4px;
+  background: var(--accent); border: 1px solid var(--card);
+  margin-top: -10px;   /* (트랙 6px - 손잡이 26px) / 2 */
+}
+input[type=range]::-moz-range-track {
+  height: 6px; border-radius: 3px; background: var(--line);
+}
+input[type=range]::-moz-range-thumb {
+  width: 12px; height: 26px; border-radius: 4px;
+  background: var(--accent); border: 1px solid var(--card);
+}
+input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); }
 
 /* ---------- 본문 ---------- */
 #main {
@@ -101,6 +124,11 @@ input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); height:
            calc(var(--tab-h) + env(safe-area-inset-bottom) + 12px);
   max-width: 1400px; margin: 0 auto;
 }
+/* hidden 속성은 어떤 클래스보다 세다.
+   (예전에 .desktop-only { display:block } 이 hidden 을 이겨서
+    표 탭이 다른 탭 화면 맨 아래에 같이 나오는 문제가 있었다.) */
+[hidden] { display: none !important; }
+
 .view { animation: fade .15s ease-out; }
 @keyframes fade { from { opacity: .4 } to { opacity: 1 } }
 
@@ -113,6 +141,18 @@ input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); height:
   padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
 }
 .banner .lead { flex-basis: 100%; font-size: 13px; color: var(--ink-dim); }
+
+/* 신호등 줄: 항해 순서대로 지점 상태를 한 줄에 늘어놓는다.
+   숫자가 카드 목록·지도의 번호와 같으므로 몇 번째가 나쁜지 바로 보인다.
+   지점이 20곳까지 늘어도 한 줄에 들어가도록 크기를 잡았다. */
+.signals { display: flex; flex-basis: 100%; gap: 4px; margin-top: 2px; }
+.signal {
+  flex: 1 1 0; min-width: 0; height: 26px; padding: 0;
+  border: 1px solid transparent; border-radius: 6px;
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+  cursor: pointer; line-height: 1;
+}
+.signal:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ---------- 지점 카드 ---------- */
 .cards { display: flex; flex-direction: column; gap: 8px; }
@@ -302,8 +342,6 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
 /* ==========================================================================
    넓은 화면 (PC / 태블릿 가로)
    ========================================================================== */
-.desktop-only { display: none; }
-
 @media (min-width: 900px) {
   :root { --top-h: 104px; --tab-h: 0px; }
   body { font-size: 14px; }
@@ -328,10 +366,7 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
             padding: 0 0 10px; }
   .tab { height: 40px; flex: 0 0 auto; padding: 0 18px; }
 
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  /* 지점 카드는 넓은 화면에서도 한 줄에 하나씩 둔다.
+     여러 칸으로 나누면 번호 순서가 좌우로 꺾여서 항해 순서를 읽기 어렵다. */
   .day-sep { top: calc(var(--top-h) + 8px); }
-}
-
-@media (min-width: 900px) {
-  .desktop-only { display: block; }
 }
