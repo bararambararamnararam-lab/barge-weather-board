@@ -38,13 +38,36 @@ from ecmwf.opendata import Client
 from ..config import Config, Location
 from . import gribtools
 
-OPER_PARAMS = ["10u", "10v", "10fg", "tp"]
+# 바람과 강수. 이 셋은 모든 스텝에 반드시 있다.
+OPER_PARAMS = ["10u", "10v", "tp"]
 WAVE_PARAMS = ["swh", "mwd", "mwp"]
 SEA_PARAMS = {"swh", "mwd", "mwp"}
 
+# 돌풍은 이름이 두 가지다. 아래 gust_param() 참고.
+GUST_NAMES = ("10fg", "10fg3")
+
 # 다운로드 동시 실행 수. ECMWF 는 동시 접속 500 개까지 허용하지만
 # 남을 배려해 적게 쓴다. 4개면 12분이 4분 정도로 줄어든다.
-WORKERS = 4
+# 3으로 낮춘 이유: 깃허브에서 돌릴 때 429(요청이 너무 많음)가 나서
+# 120초씩 기다렸다 다시 받느라 시간이 더 걸렸다.
+WORKERS = 3
+
+
+def gust_param(step: int) -> str:
+    """그 스텝에서 돌풍 항목이 어떤 이름으로 들어 있는지.
+
+    ECMWF 는 구간마다 다른 이름을 쓴다. 2026-09-06 에 직접 확인한 결과:
+
+        0 ~ 90h    : 10fg
+        96 ~ 144h  : 10fg3
+        150h 이상  : 10fg
+
+    이름을 틀리면 그 요청 전체가 거부된다("No index entries for param=10fg").
+    예전에는 돌풍을 바람과 같은 요청에 묶어 뒀던 탓에, 돌풍 이름이 틀린
+    스텝에서는 바람과 강수까지 통째로 빠졌다. 지금은 아래 _fetch_step 이
+    한 번 더 시도해서 최소한 바람은 반드시 건지도록 해 뒀다.
+    """
+    return "10fg3" if 96 <= step <= 144 else "10fg"
 
 
 def build_steps(forecast_days: int, fine_hours: int = 72,
@@ -81,8 +104,9 @@ def _fetch_step(client: Client, step: int, points: list[tuple[str, float, float]
     merged: dict[str, dict[str, float]] = {pid: {} for pid, _, _ in points}
     grid: dict[str, list[float | None]] = {}
 
-    for stream, params in (("oper", OPER_PARAMS), ("wave", WAVE_PARAMS)):
-        path = os.path.join(workdir, "ec_%s_%03d.grib2" % (stream, step))
+    def pull(name: str, params: list[str], stream: str) -> bool:
+        """한 묶음을 받아서 값을 뽑는다. 성공하면 True."""
+        path = os.path.join(workdir, "ec_%s_%03d.grib2" % (name, step))
         try:
             request: dict[str, Any] = {"type": "fc", "step": step, "param": params}
             if stream != "oper":
@@ -94,15 +118,37 @@ def _fetch_step(client: Client, step: int, points: list[tuple[str, float, float]
             if cells:
                 grid.update(gribtools.read_cells(path, cells,
                                                  sea_params=SEA_PARAMS))
+            return True
         except Exception:
-            # 한 스텝이 실패해도 나머지는 살린다. 그 칸만 비게 된다.
-            pass
+            # 한 묶음이 실패해도 나머지는 살린다. 그 항목만 비게 된다.
+            return False
         finally:
             if os.path.exists(path):
                 try:
                     os.remove(path)
                 except OSError:
                     pass
+
+    # 바람·강수에 그 스텝에 맞는 돌풍 이름을 얹어 한 번에 받는다.
+    if not pull("oper", OPER_PARAMS + [gust_param(step)], "oper"):
+        # 돌풍 이름이 예상과 달라 거부됐을 수 있다.
+        # 돌풍을 빼고 다시 받아 바람과 강수만이라도 반드시 확보한다.
+        pull("operbase", OPER_PARAMS, "oper")
+        # 그러고 나서 다른 이름으로 돌풍만 따로 시도해 본다.
+        for name in GUST_NAMES:
+            if name != gust_param(step) and pull("gust", [name], "oper"):
+                break
+
+    pull("wave", WAVE_PARAMS, "wave")
+
+    # 돌풍은 어느 이름으로 들어왔든 '10fg' 하나로 맞춰 둔다.
+    # 이렇게 해야 이 함수를 쓰는 쪽에서 이름을 신경 쓰지 않아도 된다.
+    for values in merged.values():
+        if "10fg" not in values and "10fg3" in values:
+            values["10fg"] = values.pop("10fg3")
+    if "10fg" not in grid and "10fg3" in grid:
+        grid["10fg"] = grid.pop("10fg3")
+
     return step, merged, grid
 
 
