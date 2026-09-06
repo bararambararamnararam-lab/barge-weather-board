@@ -117,14 +117,16 @@
       var tail = "";
       var t = META.thresholds[k];
       if (t && t.auto !== false) {
+        /* "불가 기준" 대신 "불가". 앞에 / 가 있어 뜻이 통하고,
+           팝업 한 줄이 폰 화면에 들어가려면 글자를 아껴야 한다. */
         if (t.unavailable_at !== null && t.unavailable_at !== undefined) {
-          tail += " / 불가 기준 " + t.unavailable_at + " " + unit;
+          tail += " / 불가 " + t.unavailable_at + unit;
         } else if (t.unavailable_below !== null && t.unavailable_below !== undefined) {
-          tail += " / 불가 기준 " + t.unavailable_below + " " + unit + " 미만";
+          tail += " / 불가 " + t.unavailable_below + unit + " 미만";
         }
         tail += " (" + META.metric_status_labels[metricStatus(k, v)] + ")";
       }
-      out.push({ head: META.labels[k] + ": ", value: v + " " + unit, tail: tail });
+      out.push({ head: META.labels[k] + ": ", value: v + unit, tail: tail });
     }
 
     if (s.wdir && s.wdir[idx] !== null) {
