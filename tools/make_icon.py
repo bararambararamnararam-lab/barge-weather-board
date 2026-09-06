@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
-"""앱 아이콘.
+"""앱 아이콘을 그린다.
 
-남색 밤바다 + 바람(위) + 블록을 실은 바지선(가운데) + 물결(아래).
+    python tools/make_icon.py      (Pillow 필요)
 
-바지선은 화면 좌우 밖까지 뻗게 그린다. 배 전체를 우겨넣지 않고
-'실려 있는 블록' 을 크게 보여 주는 편이 작은 아이콘에서 잘 읽힌다.
+구성
+    왼쪽 위 : 바람 (기상 앱이라는 표시)
+    오른쪽  : 블록을 실은 바지선. 오른쪽 화면 밖까지 뻗어 일부만 보인다.
+    아래    : 물결
+
+블록은 두 가지다. 하나는 뱃머리처럼 앞이 휘어 올라간 선수 블록,
+하나는 그냥 네모난 블록. 조선소에서 싣고 다니는 그 모양이다.
 
 크게 그린 뒤 줄여서 가장자리를 부드럽게 만든다(안티앨리어싱).
-안드로이드가 아이콘을 동그랗게 깎아도(maskable) 블록은 남도록
+안드로이드가 아이콘을 동그랗게 깎아도(maskable) 블록이 남도록
 중요한 것은 가운데 80% 안에 둔다.
 """
 import math
@@ -23,10 +28,10 @@ BG_BOT = (32, 62, 108)
 WIND = (163, 205, 255)
 WAVE_A = (86, 156, 236)
 WAVE_B = (62, 128, 208)
-HULL = (14, 26, 46)          # 바지선 몸통
-HULL_EDGE = (44, 66, 100)    # 갑판 모서리 (몸통과 구분)
-BLOCK = (226, 234, 246)      # 블록 밝은 면
-BLOCK_SIDE = (150, 168, 196) # 블록 어두운 면 (입체감)
+HULL = (14, 26, 46)           # 바지선 몸통
+HULL_EDGE = (44, 66, 100)     # 갑판 모서리
+BLOCK = (226, 234, 246)       # 블록 밝은 면
+BLOCK_SIDE = (150, 168, 196)  # 블록 어두운 면 (입체감)
 
 img = Image.new("RGB", (W, W), BG_TOP)
 d = ImageDraw.Draw(img)
@@ -46,71 +51,98 @@ def stroke(points, color, width, cap=True):
 
 
 def wind_line(y, x0, x1, amp, width):
-    """바람 한 줄. 끝을 살짝 말아 '분다'는 느낌만 준다."""
+    """바람 한 줄. 끝을 동그랗게 말아 '분다'는 느낌을 준다.
+
+    ★ 갈고리를 본선과 매끄럽게 잇는 것이 핵심이다.
+      예전에는 원호를 대충 끝점 근처에 그려서 이음매가 어긋나 보였다.
+      지금은 본선 끝의 '진행 방향' 을 재고, 그 방향에 딱 접하는 원을
+      찾아 거기서부터 감는다. 그래서 꺾이지 않고 이어진다.
+    """
     pts = []
     n = 90
     for i in range(n + 1):
         t = i / n
         pts.append((x0 + (x1 - x0) * t, y + math.sin(t * math.pi * 1.5) * amp))
-    stroke(pts, WIND, width)
-    cx, cy = pts[-1]
-    r = width * 0.95
+
+    # 본선 끝에서의 진행 방향(접선)
+    ex, ey = pts[-1]
+    px, py = pts[-8]
+    dx, dy = ex - px, ey - py
+    length = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / length, dy / length
+
+    # 접선에 수직인 두 방향 중 '위쪽' 을 고른다(위로 말려 올라가게)
+    nx, ny = -uy, ux
+    if ny > 0:
+        nx, ny = uy, -ux
+
+    r = width * 1.05
+    cx, cy = ex + nx * r, ey + ny * r      # 접하는 원의 중심
+
+    a0 = math.atan2(ey - cy, ex - cx)      # 원 중심에서 본선 끝을 본 각도
+    # 감는 방향: 접선을 따라 계속 나아가는 쪽으로
+    cross = ux * ny - uy * nx
+    sweep = math.radians(255) * (1.0 if cross < 0 else -1.0)
+
     arc = []
-    for i in range(25):
-        a = math.radians(100 - i * 9.5)
-        arc.append((cx - r + r * math.cos(a), cy - r + r * math.sin(a)))
-    stroke(arc, WIND, width)
+    m = 40
+    for i in range(m + 1):
+        a = a0 + sweep * (i / m)
+        arc.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+
+    stroke(pts + arc, WIND, width)         # 본선과 갈고리를 한 붓으로
 
 
-# ---- 바람 (위쪽) ----
-wind_line(W * 0.145, W * 0.17, W * 0.70, W * 0.021, int(W * 0.029))
-wind_line(W * 0.240, W * 0.11, W * 0.82, W * 0.025, int(W * 0.033))
-wind_line(W * 0.330, W * 0.22, W * 0.63, W * 0.017, int(W * 0.025))
+# ---- 바람 : 왼쪽에만 ----
+wind_line(W * 0.150, W * 0.055, W * 0.315, W * 0.018, int(W * 0.028))
+wind_line(W * 0.245, W * 0.030, W * 0.400, W * 0.022, int(W * 0.032))
+wind_line(W * 0.340, W * 0.075, W * 0.270, W * 0.014, int(W * 0.025))
 
 
-# ---- 블록을 실은 바지선 ----
-DECK = W * 0.615          # 갑판 윗면
-HULL_BOT = W * 0.730      # 배 밑
-X0, X1 = -W * 0.06, W * 1.06   # 좌우 화면 밖까지
+# ---- 블록을 실은 바지선 : 오른쪽 2/3 ----
+DECK = W * 0.620          # 갑판 윗면
+HULL_BOT = W * 0.735      # 배 밑
+BOW = W * 0.330           # 배 왼쪽 끝(뱃머리)
+STERN = W * 1.06          # 오른쪽은 화면 밖으로
 
 
-def block(x, w, h, step=0.0):
-    """조선소 블록 하나.
-
-    오른쪽에 어두운 면을 붙여 납작한 사각형이 아니라 덩어리로 보이게 한다.
-    step 을 주면 위를 한 단 낮춰, 택배 상자가 아니라 구조물 느낌을 준다.
-    """
+def box_block(x, w, h):
+    """네모난 블록."""
     top = DECK - h
     side = w * 0.15
-    face = x + w - side          # 밝은 면의 오른쪽 끝
-
-    if step:
-        # 왼쪽이 한 단 낮은 2단 덩어리
-        lw = w * step
-        ltop = top + h * 0.32
-        d.rectangle([x, ltop, x + lw, DECK], fill=BLOCK)
-        d.rectangle([x + lw, top, face, DECK], fill=BLOCK)
-        d.polygon([(face, top), (x + w, top + h * 0.05),
-                   (x + w, DECK), (face, DECK)], fill=BLOCK_SIDE)
-        # 낮은 단의 윗면도 살짝 어둡게 (빛 방향 통일)
-        d.polygon([(x, ltop), (x + lw, ltop),
-                   (x + lw, ltop + h * 0.05), (x, ltop + h * 0.05)],
-                  fill=BLOCK_SIDE)
-    else:
-        d.rectangle([x, top, face, DECK], fill=BLOCK)
-        d.polygon([(face, top), (x + w, top + h * 0.05),
-                   (x + w, DECK), (face, DECK)], fill=BLOCK_SIDE)
+    face = x + w - side
+    d.rectangle([x, top, face, DECK], fill=BLOCK)
+    d.polygon([(face, top), (x + w, top + h * 0.05),
+               (x + w, DECK), (face, DECK)], fill=BLOCK_SIDE)
 
 
-# 블록 3개 (가운데가 제일 높다)
-block(W * 0.140, W * 0.225, W * 0.185, step=0.40)
-block(W * 0.405, W * 0.255, W * 0.280, step=0.34)
-block(W * 0.700, W * 0.195, W * 0.150)
+def bow_block(x, w, h):
+    """뱃머리처럼 앞(왼쪽)이 휘어 올라간 블록."""
+    top = DECK - h
+    side = w * 0.15
+    face = x + w - side
 
-# 갑판(평평한 판) + 몸통
-d.rectangle([X0, DECK, X1, DECK + W * 0.020], fill=HULL_EDGE)
-d.polygon([(X0, DECK + W * 0.020), (X1, DECK + W * 0.020),
-           (X1 - W * 0.055, HULL_BOT), (X0 + W * 0.055, HULL_BOT)], fill=HULL)
+    pts = [(x, DECK)]
+    n = 36
+    for i in range(n + 1):          # 왼쪽 곡선: 아래에서 위로 휘어 오른다
+        t = i / n
+        pts.append((x + (w * 0.52) * (t ** 1.75),
+                    DECK - h * math.sin(t * math.pi / 2) ** 0.9))
+    pts += [(face, top), (face, DECK)]
+    d.polygon(pts, fill=BLOCK)
+    # 오른쪽 어두운 면
+    d.polygon([(face, top), (x + w, top + h * 0.05),
+               (x + w, DECK), (face, DECK)], fill=BLOCK_SIDE)
+
+
+bow_block(W * 0.395, W * 0.270, W * 0.250)   # 선수 블록
+box_block(W * 0.720, W * 0.215, W * 0.175)   # 네모 블록
+
+# 갑판(평평한 판) + 몸통. 뱃머리 쪽을 비스듬히 깎는다.
+d.polygon([(BOW + W * 0.030, DECK), (STERN, DECK),
+           (STERN, DECK + W * 0.021), (BOW, DECK + W * 0.021)], fill=HULL_EDGE)
+d.polygon([(BOW, DECK + W * 0.021), (STERN, DECK + W * 0.021),
+           (STERN, HULL_BOT), (BOW + W * 0.055, HULL_BOT)], fill=HULL)
 
 
 # ---- 물결 (배를 살짝 덮어 물에 떠 있게) ----
@@ -125,11 +157,12 @@ def wave_pts(y, amp, phase):
 
 
 stroke(wave_pts(HULL_BOT + W * 0.004, W * 0.022, 0.4), WAVE_A, int(W * 0.038), cap=False)
-stroke(wave_pts(HULL_BOT + W * 0.085, W * 0.026, 1.6), WAVE_B, int(W * 0.036), cap=False)
-stroke(wave_pts(HULL_BOT + W * 0.180, W * 0.023, 2.8), WAVE_A, int(W * 0.034), cap=False)
-stroke(wave_pts(HULL_BOT + W * 0.268, W * 0.020, 4.0), WAVE_B, int(W * 0.032), cap=False)
+stroke(wave_pts(HULL_BOT + W * 0.082, W * 0.026, 1.6), WAVE_B, int(W * 0.036), cap=False)
+stroke(wave_pts(HULL_BOT + W * 0.172, W * 0.023, 2.8), WAVE_A, int(W * 0.034), cap=False)
+stroke(wave_pts(HULL_BOT + W * 0.258, W * 0.020, 4.0), WAVE_B, int(W * 0.032), cap=False)
 
 out = img.resize((S, S), Image.LANCZOS)
-path = "F:/AI/Weather_gathering/claude-weather/web/icon.png"
+path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                    "web", "icon.png")
 out.save(path, "PNG", optimize=True)
-print("저장: %d 바이트, %dx%d" % (os.path.getsize(path), S, S))
+print("저장: %s (%d 바이트, %dx%d)" % (path, os.path.getsize(path), S, S))
