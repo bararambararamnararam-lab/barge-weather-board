@@ -274,7 +274,8 @@
     var src = $("sourceNote");
     if (src) {
       src.textContent = "자료 출처: ECMWF (CC BY 4.0) · NOAA GFS · "
-        + "MET Norway (CC BY 4.0) · 기상청 API 허브 · 지도 OpenStreetMap";
+        + "MET Norway (CC BY 4.0) · 기상청 API 허브 · 지도 OpenStreetMap"
+        + " / 원자료를 가공해 운항 판단을 계산한 화면입니다";
     }
   }
 

@@ -193,6 +193,7 @@ def export_route(
         [],
         ["출처", "ECMWF IFS+WAM (CC BY 4.0), NOAA GFS, MET Norway (CC BY 4.0), 기상청 API 허브"],
         ["라이선스", "ECMWF·MET Norway 는 CC BY 4.0, NOAA 는 미국 공공저작물, 기상청은 공공데이터. 모두 상업적 사용이 허용됩니다."],
+        ["가공 사실", "원자료를 그대로 옮긴 것이 아니라 운항 판단을 계산해 넣은 가공 자료입니다. (CC BY 4.0 은 변경 사실 표시를 요구합니다)"],
         ["해양 예보 한계", "파고·파주기는 약 9~10일까지만 값이 있고 그 이후는 회색입니다."],
     ]
     for line in lines:
