@@ -9,8 +9,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Iterable
 
 from .config import Config
@@ -261,6 +262,77 @@ def warnings_for_location(
     return [row for row in warning_rows if row.get("reg_id") in zones]
 
 
+# 해제 예고를 못 읽었을 때 특보를 얼마나 오래 유효하다고 볼지(시간).
+# 기상특보는 보통 하루이틀 안에 풀린다. 열흘 뒤까지 걸어 두는 것은
+# 보수적인 게 아니라 그냥 틀린 것이다.
+WARNING_FALLBACK_HOURS = 48
+
+
+def parse_end_time(ed_tm: str | None, tm_ef: str | None) -> str | None:
+    """해제 예고 글에서 실제 해제 시각을 뽑는다.
+
+    기상청이 주는 글은 형식이 일정하다.
+
+        "07일 늦은 오후(15시~18시)"  ->  그달 7일 18시
+        "08일 오전(09시~12시)"       ->  8일 12시
+        "08일 밤(21시~24시)"         ->  9일 00시  (24시는 다음날 0시)
+
+    괄호 안의 '끝 시각' 을 쓴다. 괄호가 없으면 시간대 이름으로 추정한다.
+    일자만 있고 달은 없으므로, 발효 시각(TM_EF)을 기준으로 이번 달인지
+    다음 달인지 정한다. (월말에 "01일 …" 이면 다음 달이다)
+
+    읽지 못하면 None 을 돌려준다.
+    """
+    if not ed_tm:
+        return None
+    text = str(ed_tm).strip()
+    if not text:
+        return None
+
+    day_match = re.search(r"(\d{1,2})\s*일", text)
+    if not day_match:
+        return None
+    day = int(day_match.group(1))
+
+    # 괄호 안 "~18시" 가 가장 정확하다
+    hour_match = re.search(r"~\s*(\d{1,2})\s*시", text)
+    if hour_match:
+        hour = int(hour_match.group(1))
+    else:
+        # 괄호가 없으면 시간대 이름으로 그 구간의 끝을 잡는다
+        hour = 24
+        for word, end in (("새벽", 6), ("아침", 9), ("오전", 12), ("낮", 15),
+                          ("늦은 오후", 18), ("오후", 18), ("저녁", 21), ("밤", 24)):
+            if word in text:
+                hour = end
+                break
+
+    base_iso = _kma_time_to_iso(tm_ef)
+    try:
+        base = datetime.strptime(base_iso, "%Y-%m-%dT%H:%M") if base_iso else datetime.now()
+    except Exception:
+        base = datetime.now()
+
+    year, month = base.year, base.month
+    # 발효일보다 한참 앞선 날짜면 다음 달로 넘어간 것이다.
+    if day < base.day - 15:
+        month += 1
+        if month > 12:
+            month = 1
+            year += 1
+
+    extra_days = 0
+    if hour >= 24:          # 24시는 다음날 0시
+        hour -= 24
+        extra_days = 1
+
+    try:
+        end = datetime(year, month, day, hour) + timedelta(days=extra_days)
+    except ValueError:
+        return None
+    return end.strftime("%Y-%m-%dT%H:%M")
+
+
 def active_warnings_at(
     config: Config,
     location_warnings: list[dict[str, Any]],
@@ -268,10 +340,17 @@ def active_warnings_at(
 ) -> list[WarningHit]:
     """특정 시각에 유효한 특보만 골라 WarningHit 목록으로 만든다.
 
-    '유효'의 기준: 발효시각(TM_EF) <= 그 시각.
-    해제 시각은 ED_TM 이 '08일 오전(09시~12시)' 처럼 사람이 읽는 글이라
-    정확한 시각으로 계산할 수 없다. 그래서 해제 예고는 툴팁 글로만 보여 주고
-    판정에서는 발효 이후 전부를 유효로 본다(보수적으로 처리).
+    '유효'의 기준
+      1) 발효시각(TM_EF) <= 그 시각
+      2) 그 시각 < 해제 시각
+
+    해제 시각은 ED_TM("07일 늦은 오후(15시~18시)")을 읽어서 구한다.
+    parse_end_time 참고. 읽지 못하면 발효 후 WARNING_FALLBACK_HOURS 까지만
+    유효로 본다.
+
+    ★ 예전에는 해제 시각을 아예 무시하고 발효 이후 전부를 유효로 봤다.
+      그래서 7일에 풀릴 강풍주의보 때문에 16일 예보까지 '조건부' 로
+      나왔다. 보수적인 게 아니라 틀린 결과였다.
     """
     rules = config.warning_rules
     hits: list[WarningHit] = []
@@ -280,6 +359,19 @@ def active_warnings_at(
             continue
         effective = _kma_time_to_iso(row.get("tm_ef"))
         if effective and valid_time < effective:
+            continue
+
+        # 해제 시각을 지났으면 더 이상 유효하지 않다.
+        end = parse_end_time(row.get("ed_tm"), row.get("tm_ef"))
+        if end is None and effective:
+            # 해제 예고를 못 읽었을 때의 안전장치
+            try:
+                end = (datetime.strptime(effective, "%Y-%m-%dT%H:%M")
+                       + timedelta(hours=WARNING_FALLBACK_HOURS)
+                       ).strftime("%Y-%m-%dT%H:%M")
+            except Exception:
+                end = None
+        if end and valid_time >= end:
             continue
         effect = _warning_effect(rules, (row.get("wrn") or "").strip(),
                                  (row.get("lvl") or "").strip())

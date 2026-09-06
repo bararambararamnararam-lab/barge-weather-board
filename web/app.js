@@ -91,6 +91,25 @@
   }
   function series(locId) { return FC.series[locId] || null; }
 
+  /* 그 시각에 실제로 걸려 있는 특보만 고른다.
+
+     특보에는 발효 시각(from)과 해제 예정 시각(until)이 들어 있다.
+     이걸 안 보면 이미 풀린 특보가 열흘 뒤 예보에까지 붙는다.
+     (실제로 7일에 풀릴 강풍주의보가 16일까지 따라다녔다)
+
+     until 이 없는 특보(해제 예고를 읽지 못한 것)는 계속 유효로 본다.
+     판정 쪽에서는 48시간 안전장치를 두지만, 화면 글자는 보수적으로 남긴다. */
+  function warningsAt(locId, idx) {
+    var all = FC.warnings_by_location[locId] || [];
+    var t = FC.times[idx];
+    if (!t) return all;
+    return all.filter(function (w) {
+      if (w.from && t < w.from) return false;
+      if (w.until && t >= w.until) return false;
+      return true;
+    });
+  }
+
   /* 지점·시각의 값들을 줄 단위로 만든다.
 
      각 줄을 {head, value, tail} 세 토막으로 돌려준다.
@@ -139,7 +158,7 @@
                  value: META.wmo[s.code[idx]] || ("코드 " + s.code[idx]) });
     }
 
-    var ws = FC.warnings_by_location[locId] || [];
+    var ws = warningsAt(locId, idx);
     if (ws.length) {
       out.push({ head: "---- 기상특보 ----" });
       ws.forEach(function (w) {
@@ -207,7 +226,7 @@
       });
     box.appendChild(rows);
 
-    var ws = FC.warnings_by_location[locId] || [];
+    var ws = warningsAt(locId, idx);
     if (ws.length) {
       var w = ws[0];
       for (var i = 0; i < ws.length; i++) {
@@ -319,7 +338,7 @@
       top.appendChild(el("div", "card-num", String(i + 1)));
       top.appendChild(el("div", "card-name", loc.name));
 
-      var ws = FC.warnings_by_location[locId] || [];
+      var ws = warningsAt(locId, idx);
       if (ws.length) {
         // 가장 센 특보 하나만 짧게 보여 주고, 더 있으면 +N 으로 붙인다.
         var worstW = ws[0];
@@ -772,7 +791,8 @@
       state.metric = k; renderDetail();
     });
 
-    var ws = FC.warnings_by_location[locId] || [];
+    /* 상세 화면 위 상자는 지금 보고 있는 시각 기준으로 보여 준다. */
+    var ws = warningsAt(locId, state.timeIndex);
     var wbox = $("detailWarn");
     if (ws.length) {
       wbox.hidden = false;
@@ -814,7 +834,7 @@
             chip.textContent = p[1] + " " + (v === null ? "—" : num(v));
             factors.appendChild(chip);
           });
-        var wsRow = FC.warnings_by_location[locId] || [];
+        var wsRow = warningsAt(locId, i);
         if (wsRow.length) {
           var worstW = wsRow[0];
           for (var wi = 0; wi < wsRow.length; wi++) {
@@ -860,7 +880,7 @@
 
     route.locations.forEach(function (locId) {
       var loc = META.locations[locId];
-      var ws = FC.warnings_by_location[locId] || [];
+      var ws = warningsAt(locId, state.timeIndex);
       var card = el("div", "wcard");
       card.appendChild(el("h3", null, loc.name));
       if (!loc.zones.length) {

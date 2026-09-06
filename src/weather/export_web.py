@@ -270,6 +270,11 @@ def build_forecast(config: Config, rows: list[dict[str, Any]],
                 "cmd": w.get("cmd"),
                 "tm_ef": w.get("tm_ef"),
                 "ed_tm": w.get("ed_tm"),
+                # 화면이 시각별로 걸러낼 수 있게 발효·해제 시각을
+                # 계산해 둔 값으로 같이 보낸다.
+                # (없으면 화면은 그 특보를 계속 유효하다고 본다)
+                "from": judge._kma_time_to_iso(w.get("tm_ef")),
+                "until": judge.parse_end_time(w.get("ed_tm"), w.get("tm_ef")),
             }
             for w in applicable
         ]
