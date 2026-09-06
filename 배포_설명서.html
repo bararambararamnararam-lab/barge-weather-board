@@ -354,9 +354,21 @@
             <p>로그인 후 오른쪽 위 <b>+</b> 버튼 → <b>New repository</b>.</p>
             <ol class="sub">
               <li>Repository name: 아무 이름이나 괜찮다. 예 <code class="inline">weather-board</code></li>
-              <li><b>Private</b> 선택 — 소스 코드는 남이 못 보고, 완성된 화면 주소는 그대로 접속된다(7단계).</li>
+              <li><b>Public</b> 선택 — 아래 콜아웃 참고.</li>
               <li>다른 옵션은 그대로 두고 <b>Create repository</b> 클릭.</li>
             </ol>
+            <div class="callout warn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.7 18a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+              <p><b>왜 Public 인가</b> — 깃허브 무료 플랜은 <b>비공개 저장소에서 Pages(웹 화면 켜기)
+              기능 자체를 못 쓴다.</b> Private 로 만들면 5단계에서 막힌다.
+              Public 으로 하면 소스 코드·설정 파일·항로 좌표(영성·CSME 경유지)까지
+              인터넷에서 누구나 볼 수 있게 된다. 기상 데이터 자체는 원래 출처를 밝히고
+              쓰는 공개 자료라 상관없고, 보는 사람도 사내 몇 명뿐이라 이 프로젝트는
+              이 정도 노출을 감수하기로 했다. <b>API 키(.env)와 데이터베이스는
+              애초에 저장소에 올라가지 않으니 이걸로 새로 새는 건 없다.</b>
+              항로 좌표까지 가리고 싶으면 월 $4 짜리 GitHub Pro 또는
+              무료인 Cloudflare Pages 로 대신 갈 수 있다 (README 9절).</p>
+            </div>
             <p>초록 버튼과 명령어가 잔뜩 적힌 안내 화면이 뜨는데, <b>그대로 두고 다음 단계로 넘어간다.</b>
             거기 적힌 명령어는 안 써도 된다 — 이미 우리 프로젝트에 파일이 다 있기 때문이다.</p>
           </div>
@@ -425,7 +437,16 @@ git push -u origin main</code></pre>
               <h3>자동 실행 방식 켜기</h3>
               <label class="step-check"><input type="checkbox" data-step-id="5"><span>완료</span></label>
             </div>
-            <p><b>Settings</b> → 왼쪽 메뉴 <b>Pages</b> → <b>Build and deployment</b> 항목의
+            <p><b>Settings</b> → <b>Pages</b> 로 들어갔는데
+            "<i>Upgrade or make this repository public to enable Pages</i>" 라는
+            문구가 뜬다면, 2단계에서 저장소를 Private 로 만든 경우다.
+            그러면 먼저 이것부터 한다:</p>
+            <ol class="sub">
+              <li>같은 <b>Settings</b> 화면(General)을 맨 아래까지 내린다</li>
+              <li>빨간 테두리 <b>Danger Zone</b> 구역의 <b>Change visibility</b> 클릭</li>
+              <li><b>Change to public</b> 선택 → 저장소 이름을 다시 입력해 확인</li>
+            </ol>
+            <p>그다음 <b>Settings</b> → 왼쪽 메뉴 <b>Pages</b> → <b>Build and deployment</b> 항목의
             <b>Source</b> 드롭다운을 <b>GitHub Actions</b> 로 바꾼다.</p>
             <div class="callout warn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.7 18a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
