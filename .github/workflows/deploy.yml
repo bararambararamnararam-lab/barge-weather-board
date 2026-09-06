@@ -93,6 +93,17 @@ jobs:
             echo "'기상자료 수집'을 한 번 돌리면 만들어집니다."
           fi
 
+      - name: 화면 파일에 판 번호 붙이기
+        run: |
+          # index.html 이 app.js?v=1 처럼 늘 같은 주소로 파일을 부르면,
+          # 서버 파일이 바뀌어도 브라우저는 "받아둔 것 그대로 쓰자" 하고
+          # 옛 파일을 계속 씁니다(최대 10분). 그래서 배포할 때마다
+          # 이 번호를 그때그때 값으로 바꿔 줍니다.
+          STAMP="$(date -u +%Y%m%d%H%M)-${GITHUB_SHA::7}"
+          sed -i "s/?v=[A-Za-z0-9._-]*/?v=$STAMP/g" web/index.html
+          echo "판 번호: $STAMP"
+          grep -oE '(src|href)="app\.[a-z]+\?[^"]*"' web/index.html
+
       - name: 웹페이지 꾸러미 만들기
         uses: actions/upload-pages-artifact@v5
         with:
