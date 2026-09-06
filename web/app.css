@@ -256,10 +256,21 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
 }
 .tdot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; }
 .tval {
-  flex: 1; font-size: 14px; font-weight: 700;
+  flex: 1; min-width: 0; font-size: 14px; font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .tsub { font-size: 12px; color: var(--ink-dim); font-weight: 500; }
+
+/* 판정 근거 알약들. 네 항목 + 특보를 한 줄에 늘어놓는다.
+   좁은 화면에서는 아랫줄로 넘어간다(잘리는 것보다 낫다). */
+.tfactors {
+  display: flex; flex-wrap: wrap; gap: 3px 4px; margin-top: 4px;
+}
+.tfac {
+  padding: 1px 6px; border-radius: 5px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---------- 지도 ---------- */
 /* 지도 위 도구 줄 (해역 색칠 켜기/끄기 + 범례) */
@@ -297,32 +308,40 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
 }
 .wx-pin::before { display: none; }
 .wx-pop {
-  font: 12px/1.5 monospace; color: #202020;
-  /* 가장 긴 줄에 맞춰 폭을 잡는다.
-     ★ 이게 없으면 팝업이 글자 몇 개 폭으로 짜부라진다.
-       줄이 접힐 수 있게(pre-wrap) 해 두면 브라우저가 "접어서라도 좁게"
-       라고 판단하기 때문이다. 예전에는 pre(절대 안 접힘)라 저절로 넓었다. */
-  width: max-content;
-  max-width: min(88vw, 340px);   /* 폰 화면을 넘지 않게 */
-  min-width: 190px;
-  max-height: 46vh; overflow: auto;
+  font: 12.5px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif;
+  color: #202020; min-width: 150px;
 }
-/* 그래도 상한을 넘는 긴 줄은 접어서 보여 준다.
-   접힌 뒷줄은 조금 들여써서 새 항목과 헷갈리지 않게 한다. */
-.wx-line {
-  white-space: pre-wrap; word-break: keep-all;
-  padding-left: 1.1em; text-indent: -1.1em;
+.wx-name { font-weight: 700; font-size: 13.5px; color: #111; }
+.wx-when { color: #666; font-size: 11.5px; margin-bottom: 6px; }
+.wx-none { color: #666; }
+
+/* 판정. 팝업에서 제일 먼저 눈에 들어와야 한다. */
+.wx-verdict {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-weight: 700; font-size: 12.5px; margin-bottom: 7px;
 }
 
-/* 좁은 폰(320px 급)이나 글자 크기를 키워 둔 경우를 위한 안전장치.
-   계산상 320px 에서도 한 줄에 들어가지만, 여유를 더 둔다. */
-@media (max-width: 380px) {
-  .wx-pop { font-size: 11px; }
-  .wx-pop b.wx-now { font-size: 11.5px; }
+/* 값 넷. 이름과 값을 두 칸으로 세워 정렬한다. */
+.wx-rows {
+  display: grid; grid-template-columns: auto auto;
+  gap: 3px 10px; align-items: baseline;
 }
-/* 지금 값. 같은 줄에 불가 기준이 같이 있어서 굵게 해 두지 않으면
-   어느 쪽이 지금 값인지 헷갈린다. */
-.wx-pop b.wx-now { font-weight: 700; color: #000; font-size: 12.5px; }
+.wx-k { color: #666; font-size: 11.5px; }
+.wx-v {
+  font-weight: 700; font-variant-numeric: tabular-nums;
+  padding: 0 5px; border-radius: 4px; white-space: nowrap;
+}
+.wx-warn {
+  margin-top: 7px; padding: 3px 8px; border-radius: 5px;
+  font-weight: 700; font-size: 11.5px; display: inline-block;
+}
+.wx-more {
+  display: block; width: 100%; margin-top: 9px; padding: 6px 8px;
+  border: 1px solid #c8d0da; border-radius: 7px; background: #f3f6fa;
+  color: #1c3d6e; font-weight: 700; font-size: 12px; cursor: pointer;
+}
+.wx-more:hover { background: #e8eef7; }
+
 .leaflet-popup-content { margin: 8px 10px; width: auto !important; }
 
 /* ---------- 특보 ---------- */

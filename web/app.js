@@ -166,16 +166,65 @@
     }).join("\n");
   }
 
-  /* 지도 팝업용. 값 토막만 굵게 그린다. */
-  function detailNode(locId, idx) {
+  /* 지도 팝업.
+
+     ★ 짧게 유지한다. 예전에는 상세 화면과 똑같이 12줄을 넣었더니
+       팝업이 지도를 통째로 덮어 닫기 버튼조차 가렸다.
+       지도에서는 "이 지점이 지금 어떤지" 만 보면 된다.
+       불가 기준·수집 시각·출처는 '자세히' 를 눌러 지점 화면에서 본다. */
+  function popupNode(locId, idx) {
+    var s = series(locId), loc = META.locations[locId];
     var box = el("div", "wx-pop");
-    detailParts(locId, idx).forEach(function (p) {
-      var line = el("div", "wx-line");
-      if (p.head) line.appendChild(document.createTextNode(p.head));
-      if (p.value) line.appendChild(el("b", "wx-now", p.value));
-      if (p.tail) line.appendChild(document.createTextNode(p.tail));
-      box.appendChild(line);
-    });
+    if (!loc) return box;
+
+    box.appendChild(el("div", "wx-name", loc.name));
+    box.appendChild(el("div", "wx-when", fmtTime(FC.times[idx]) + " 기준"));
+
+    if (!s) {
+      box.appendChild(el("div", "wx-none", "자료 없음"));
+      return box;
+    }
+
+    var st = s.st[idx];
+    box.appendChild(el("div", "wx-verdict s-" + st, META.status_labels[st]));
+
+    /* 값 넷만. 기준은 빼고 값 자체에 색으로 상태를 담는다. */
+    var rows = el("div", "wx-rows");
+    [["wind", "풍속"], ["gust", "돌풍"], ["wave", "파고"], ["vis", "시정"]]
+      .forEach(function (p) {
+        var k = p[0], v = s[k] ? s[k][idx] : null;
+        rows.appendChild(el("span", "wx-k", p[1]));
+        if (v === null || v === undefined) {
+          rows.appendChild(el("span", "wx-v", "—"));
+          return;
+        }
+        var vv = el("span", "wx-v s-" + metricStatus(k, v));
+        vv.textContent = v + (META.units[k] || "");
+        if (k === "wind" && s.wdir && s.wdir[idx] !== null) {
+          vv.textContent += " " + compass(s.wdir[idx]);
+        }
+        rows.appendChild(vv);
+      });
+    box.appendChild(rows);
+
+    var ws = FC.warnings_by_location[locId] || [];
+    if (ws.length) {
+      var w = ws[0];
+      for (var i = 0; i < ws.length; i++) {
+        if (ws[i].lvl === "경보") { w = ws[i]; break; }
+      }
+      box.appendChild(el("div", "wx-warn s-" + (w.lvl === "경보" ? "u" : "c"),
+        "특보 " + w.wrn + w.lvl + (ws.length > 1 ? " 외 " + (ws.length - 1) : "")));
+    }
+
+    var more = el("button", "wx-more", "자세히 보기 ›");
+    more.type = "button";
+    more.onclick = function () {
+      if (map) map.closePopup();
+      state.location = locId;
+      show("detail");
+    };
+    box.appendChild(more);
     return box;
   }
 
@@ -748,11 +797,34 @@
       var row = el("div", "trow" + (i === nowIdx ? " now-row" : ""));
       row.appendChild(el("div", "thour", t.slice(11, 16)));
 
-      var st, main, sub = "";
+      var st, main, sub = "", factors = null;
       if (m.kind === "judge") {
         st = s.st[i];
         main = META.status_labels[st];
-        sub = "풍속 " + num(s.wind[i]) + " · 파고 " + num(s.wave[i]);
+        /* 판정 근거를 전부 보여 준다.
+           예전에는 풍속·파고 둘만 적었는데, 그 둘이 멀쩡한데 '조건' 이
+           뜨면 왜 그런지 알 길이 없었다. 판정은 네 항목(풍속·돌풍·파고·시정)과
+           기상특보를 함께 보고 내린다. 항목마다 제 상태 색을 입혀서
+           어느 것이 걸렸는지 한눈에 보이게 한다. */
+        factors = el("span", "tfactors");
+        [["wind", "풍속"], ["gust", "돌풍"], ["wave", "파고"], ["vis", "시정"]]
+          .forEach(function (p) {
+            var k = p[0], v = s[k] ? s[k][i] : null;
+            var chip = el("span", "tfac s-" + (v === null ? "x" : metricStatus(k, v)));
+            chip.textContent = p[1] + " " + (v === null ? "—" : num(v));
+            factors.appendChild(chip);
+          });
+        var wsRow = FC.warnings_by_location[locId] || [];
+        if (wsRow.length) {
+          var worstW = wsRow[0];
+          for (var wi = 0; wi < wsRow.length; wi++) {
+            if (wsRow[wi].lvl === "경보") { worstW = wsRow[wi]; break; }
+          }
+          var wchip = el("span", "tfac s-" + (worstW.lvl === "경보" ? "u" : "c"));
+          wchip.textContent = "특보 " + worstW.wrn + worstW.lvl
+            + (wsRow.length > 1 ? "+" + (wsRow.length - 1) : "");
+          factors.appendChild(wchip);
+        }
       } else {
         var v = s[m.key] ? s[m.key][i] : null;
         st = metricStatus(m.key, v);
@@ -770,10 +842,8 @@
       row.appendChild(wrap);
 
       var val = el("div", "tval", main);
-      if (sub) {
-        var small = el("span", "tsub", "  " + sub);
-        val.appendChild(small);
-      }
+      if (factors) val.appendChild(factors);
+      else if (sub) val.appendChild(el("span", "tsub", "  " + sub));
       row.appendChild(val);
       row.title = detailText(locId, i);
       list.appendChild(row);
@@ -1149,7 +1219,7 @@
         mapLayers.push(arrow);
       }
 
-      var pop = detailNode(locId, idx);
+      var pop = popupNode(locId, idx);
 
       var up = (i % 2 === 0);
       var mk = L.circleMarker([loc.lat, loc.lon], {
@@ -1160,7 +1230,7 @@
           permanent: true, direction: up ? "top" : "bottom",
           offset: up ? [0, -9] : [0, 9], className: "wx-pin", opacity: 1
         })
-        .bindPopup(pop, { maxWidth: 520, minWidth: 220 });
+        .bindPopup(pop, { maxWidth: 300, minWidth: 180, autoPanPadding: [12, 12] });
       mapLayers.push(mk);
     });
 
