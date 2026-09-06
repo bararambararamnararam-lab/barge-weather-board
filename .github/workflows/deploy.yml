@@ -1,0 +1,94 @@
+# 화면만 다시 배포하는 설정입니다.
+#
+# 무엇을 하나
+# ------------
+# 코드나 화면 파일을 고쳐서 깃허브에 올리면(push), 기상 자료를 새로 받지 않고
+# 화면만 다시 만들어 배포합니다. 30초쯤 걸립니다.
+#
+# 왜 필요한가
+# ------------
+# '기상자료 수집' 은 정해진 시각(하루 4번)과 손으로 누를 때만 돕니다.
+# 그래서 화면을 고쳐 올려도 사이트는 그대로였습니다.
+# 이 설정이 그 빈틈을 메웁니다.
+#
+# 기상 자료는 어디서 오나
+# ----------------------
+# 저장해 둔 데이터베이스(Releases 의 weather.db.gz)를 내려받아
+# 화면용 JSON 만 다시 만듭니다. ECMWF 같은 데서 새로 받지 않으므로 빠릅니다.
+# 자료 자체를 새로 받고 싶으면 '기상자료 수집' 을 손으로 돌리면 됩니다.
+
+name: 화면 배포
+
+on:
+  push:
+    branches: [main]
+    # 화면과 관련 있는 것을 고쳤을 때만 돕니다.
+    # README 만 고쳤을 때까지 배포할 이유는 없습니다.
+    paths:
+      - "web/**"
+      - "src/**"
+      - "config/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# '기상자료 수집' 과 같은 이름을 씁니다.
+# 둘이 동시에 배포하면 서로 밀어내므로, 한 번에 하나씩 차례로 돌게 합니다.
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 소스 내려받기
+        uses: actions/checkout@v7
+
+      - name: 파이썬 준비
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 부품 설치
+        # 화면용 JSON 을 만드는 데는 설정 파일을 읽는 PyYAML 하나면 됩니다.
+        # 기상 자료를 받지 않으므로 무거운 것들은 깔지 않습니다.
+        run: pip install PyYAML
+
+      - name: 저장해 둔 데이터베이스 가져오기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          if gh release download db --pattern weather.db.gz --dir data --clobber; then
+            gunzip -f data/weather.db.gz
+            echo "DB 사용 ($(du -h data/weather.db | cut -f1))"
+          else
+            echo "::warning::저장된 DB가 없습니다. 화면이 빈 채로 배포됩니다."
+            echo "'기상자료 수집' 을 한 번 돌리면 채워집니다."
+          fi
+
+      - name: 화면용 파일 만들기
+        run: PYTHONPATH=src python -m weather.export_web
+
+      - name: 웹페이지 꾸러미 만들기
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 웹페이지 배포
+        id: deployment
+        uses: actions/deploy-pages@v5

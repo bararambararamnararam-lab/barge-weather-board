@@ -37,8 +37,10 @@ permissions:
 
 # 앞 작업이 아직 돌고 있으면 새로 시작하지 않고 기다립니다.
 # (DB를 두 곳에서 동시에 고치면 꼬입니다.)
+# '화면 배포'(deploy.yml)와 같은 이름을 써서, 둘이 동시에 배포하며
+# 서로 밀어내지 않고 차례로 돌게 합니다.
 concurrency:
-  group: collect
+  group: site
   cancel-in-progress: false
 
 jobs:
