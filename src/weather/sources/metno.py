@@ -29,8 +29,8 @@ from ..config import Config, Location
 
 URL = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
 
-# met.no 이용 약관상 연락처를 넣어야 한다.
-USER_AGENT = "barge-weather-board/1.0 (tdotkil@gmail.com)"
+# met.no 이용 약관상 연락처를 넣어야 한다. 개인 이메일 대신 저장소 주소를 쓴다.
+USER_AGENT = "barge-weather-board/1.0 (+https://github.com/bararambararamnararam-lab/barge-weather-board)"
 
 
 def collect_wind(config: Config, valid_times: set[str],
