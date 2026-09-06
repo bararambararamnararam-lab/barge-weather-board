@@ -46,11 +46,33 @@ SEA_PARAMS = {"swh", "mwd", "mwp"}
 # 돌풍은 이름이 두 가지다. 아래 gust_param() 참고.
 GUST_NAMES = ("10fg", "10fg3")
 
-# 다운로드 동시 실행 수. ECMWF 는 동시 접속 500 개까지 허용하지만
-# 남을 배려해 적게 쓴다. 4개면 12분이 4분 정도로 줄어든다.
-# 3으로 낮춘 이유: 깃허브에서 돌릴 때 429(요청이 너무 많음)가 나서
-# 120초씩 기다렸다 다시 받느라 시간이 더 걸렸다.
-WORKERS = 3
+# 다운로드 동시 실행 수.
+# 구글 복제본은 클라우드 스토리지라 이 정도로는 끄떡없다.
+WORKERS = 4
+
+# 자료를 어디서 받을지의 기본값. 설정 파일에서 바꿀 수 있다.
+DEFAULT_SOURCE = "google"
+DEFAULT_RETRY_WAIT = 20
+DEFAULT_MAX_RETRIES = 15
+
+
+def make_client(config: Config | None = None) -> Client:
+    """자료를 받아 올 통로를 만든다.
+
+    ECMWF 본서버는 전 세계가 같이 쓰다 보니 자주 "429 Too Many Requests" 로
+    막힌다. 막히면 기본 설정상 120초를 기다렸다 다시 받는데, 스텝이 53개나
+    되다 보니 수집이 몇 분씩 늘어났다.
+
+    같은 자료가 구글·아마존·애저 클라우드에 그대로 복제돼 있고 그쪽은
+    이런 제한이 없다. 그래서 기본을 구글로 두고, 막혔을 때 기다리는 시간도
+    120초에서 20초로 줄였다.
+    """
+    opts = (config.raw.get("ecmwf_download") if config else None) or {}
+    return Client(
+        source=str(opts.get("source", DEFAULT_SOURCE)),
+        retry_after=int(opts.get("retry_wait_seconds", DEFAULT_RETRY_WAIT)),
+        maximum_retries=int(opts.get("max_retries", DEFAULT_MAX_RETRIES)),
+    )
 
 
 def gust_param(step: int) -> str:
@@ -84,10 +106,11 @@ def build_steps(forecast_days: int, fine_hours: int = 72,
     return sorted(set(s for s in steps if s <= total))
 
 
-def latest_cycle(client: Client | None = None) -> datetime | None:
+def latest_cycle(client: Client | None = None,
+                 config: Config | None = None) -> datetime | None:
     """지금 받을 수 있는 가장 최근 ECMWF 사이클(UTC)."""
     try:
-        return (client or Client(source="ecmwf")).latest(type="fc")
+        return (client or make_client(config)).latest(type="fc")
     except Exception:
         return None
 
@@ -169,7 +192,7 @@ def collect(config: Config, locations: list[Location] | None = None,
     locs = locations if locations is not None else config.forecast_locations
     points = [(loc.id, loc.latitude, loc.longitude) for loc in locs]
 
-    client = Client(source="ecmwf")
+    client = make_client(config)
     cycle = latest_cycle(client)
     if cycle is None:
         raise RuntimeError("ECMWF 사이클을 확인하지 못했습니다. 인터넷 연결을 확인하세요.")

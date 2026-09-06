@@ -97,7 +97,7 @@ def collect_forecast(config: Config, locations: list[Location] | None = None,
     state = _load_state()
 
     # --- 1) ECMWF: 새 사이클일 때만 내려받는다 ---
-    cycle = ecmwf_open.latest_cycle()
+    cycle = ecmwf_open.latest_cycle(config=config)
     if cycle is None:
         raise RuntimeError("ECMWF 사이클을 확인하지 못했습니다. 인터넷 연결을 확인하세요.")
     cycle_key = cycle.strftime("%Y-%m-%dT%H:%M")
