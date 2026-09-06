@@ -488,7 +488,11 @@
 
   /* 격자 칸을 사각형으로 그린다.
      사각형은 한 번만 만들고, 시각이 바뀌면 색만 갈아 끼운다.
-     매번 다시 만들면 칸이 300개쯤 되어 눈에 띄게 느려진다. */
+     매번 다시 만들면 칸이 900개쯤 되어 눈에 띄게 느려진다.
+
+     grid.json 의 각 칸은 {lat, lon, st, wind, gust, wave} 객체다.
+     st 는 이 칸의 시각별 판정을 한 글자씩 이어붙인 문자열이고
+     (n=가능 c=조건 u=불가 x=데이터없음), GRID.times 와 같은 순서다. */
   function buildGridLayer() {
     if (!GRID || gridLayer) return;
     var half = GRID.cell_deg / 2;
@@ -498,14 +502,13 @@
     gridLayer = L.layerGroup();
     gridCells = [];
     GRID.cells.forEach(function (c) {
-      var lat = c[0], lon = c[1], si = c[2];
       var rect = L.rectangle(
-        [[lat - half, lon - half], [lat + half, lon + half]],
+        [[c.lat - half, c.lon - half], [c.lat + half, c.lon + half]],
         { stroke: false, fillOpacity: 0.4, fillColor: "#9e9e9e",
           interactive: false, renderer: canvas }
       );
       gridLayer.addLayer(rect);
-      gridCells.push({ rect: rect, si: si });
+      gridCells.push({ rect: rect, cell: c });
     });
   }
 
@@ -513,8 +516,7 @@
     if (!GRID || !gridLayer) return;
     var slot = gridSlot();
     gridCells.forEach(function (g) {
-      var st = GRID.series[g.si];
-      var ch = (st && slot >= 0 && slot < st.st.length) ? st.st[slot] : "x";
+      var ch = (slot >= 0 && slot < g.cell.st.length) ? g.cell.st[slot] : "x";
       g.rect.setStyle({ fillColor: AREA_HEX[ch] || AREA_HEX.x });
     });
   }
