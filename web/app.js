@@ -91,53 +91,90 @@
   }
   function series(locId) { return FC.series[locId] || null; }
 
-  /* 어떤 지점·시각의 값들을 사람이 읽을 수 있는 여러 줄 글로 만든다.
-     지도 팝업과 상세 화면에서 같이 쓴다. */
-  function detailText(locId, idx) {
+  /* 지점·시각의 값들을 줄 단위로 만든다.
+
+     각 줄을 {head, value, tail} 세 토막으로 돌려준다.
+     value 가 '지금 값' 이다. 지도 팝업에서는 이 토막만 굵게 그린다.
+     같은 줄에 불가 기준이 같이 적혀 있어서, 굵게 하지 않으면 어느 쪽이
+     지금 값인지 헷갈린다. */
+  function detailParts(locId, idx) {
     var s = series(locId), loc = META.locations[locId];
-    if (!s) return loc.name;
-    var lines = [];
-    lines.push(loc.name + " / " + fmtTime(FC.times[idx]));
-    lines.push("판정: " + META.status_labels[s.st[idx]]);
-    /* 자료원이 ECMWF+NOAA 로 바뀌면서 뇌우(cape)·해류(cur)·수온(sst)은
-       더 이상 받지 않는다. 목록에서 뺀다. */
+    var out = [];
+    if (!s) { out.push({ head: loc ? loc.name : locId }); return out; }
+
+    out.push({ head: loc.name + " / " + fmtTime(FC.times[idx]) });
+    out.push({ head: "판정: ", value: META.status_labels[s.st[idx]] });
+
+    /* 자료원이 ECMWF+NOAA 로 바뀌면서 뇌우·해류·수온은 받지 않는다. */
     var order = ["wind", "gust", "wave", "vis", "prec", "vper"];
     for (var i = 0; i < order.length; i++) {
       var k = order[i], v = s[k] ? s[k][idx] : null;
       if (v === null || v === undefined) {
-        lines.push(META.labels[k] + ": 데이터 없음");
+        out.push({ head: META.labels[k] + ": ", value: "데이터 없음" });
         continue;
       }
-      var line = META.labels[k] + ": " + v + " " + (META.units[k] || "");
+      var unit = META.units[k] || "";
+      var tail = "";
       var t = META.thresholds[k];
       if (t && t.auto !== false) {
         if (t.unavailable_at !== null && t.unavailable_at !== undefined) {
-          line += " / 불가 기준 " + t.unavailable_at + " " + META.units[k];
+          tail += " / 불가 기준 " + t.unavailable_at + " " + unit;
         } else if (t.unavailable_below !== null && t.unavailable_below !== undefined) {
-          line += " / 불가 기준 " + t.unavailable_below + " " + META.units[k] + " 미만";
+          tail += " / 불가 기준 " + t.unavailable_below + " " + unit + " 미만";
         }
-        line += " (" + META.metric_status_labels[metricStatus(k, v)] + ")";
+        tail += " (" + META.metric_status_labels[metricStatus(k, v)] + ")";
       }
-      lines.push(line);
+      out.push({ head: META.labels[k] + ": ", value: v + " " + unit, tail: tail });
     }
+
     if (s.wdir && s.wdir[idx] !== null) {
-      lines.push("풍향: " + compass(s.wdir[idx]) + " (" + s.wdir[idx] + "°)");
+      out.push({ head: "풍향: ",
+                 value: compass(s.wdir[idx]) + " (" + s.wdir[idx] + "°)",
+                 tail: " · 불어오는 쪽" });
     }
     if (s.code && s.code[idx] !== null) {
-      lines.push("날씨: " + (META.wmo[s.code[idx]] || ("코드 " + s.code[idx])));
+      out.push({ head: "날씨: ",
+                 value: META.wmo[s.code[idx]] || ("코드 " + s.code[idx]) });
     }
+
     var ws = FC.warnings_by_location[locId] || [];
     if (ws.length) {
-      lines.push("---- 기상특보 ----");
+      out.push({ head: "---- 기상특보 ----" });
       ws.forEach(function (w) {
-        lines.push(w.wrn + " " + w.lvl + " (" + w.cmd + ") [" + w.reg_ko + "]"
-                   + (w.ed_tm ? " / 해제예고 " + w.ed_tm : ""));
+        out.push({ head: "", value: w.wrn + " " + w.lvl,
+                   tail: " (" + w.cmd + ") [" + w.reg_ko + "]"
+                         + (w.ed_tm ? " / 해제예고 " + w.ed_tm : "") });
       });
     }
-    lines.push("데이터 기준: 예보");
-    lines.push("예보 수집 시각: " + fmtTime(META.forecast_collected_at) + " KST");
-    lines.push("출처: Open-Meteo Forecast + Marine, 기상청 특보현황");
-    return lines.join("\n");
+
+    out.push({ head: "데이터 기준: 예보" });
+    out.push({ head: "예보 수집 시각: " + fmtTime(META.forecast_collected_at) + " KST" });
+    /* 자료원이 바뀌면 이 줄도 같이 바뀌도록 meta.json 에서 가져다 쓴다.
+       예전에는 "Open-Meteo" 를 글자로 박아 둬서, 자료원을 ECMWF 로 바꾼
+       뒤에도 지도 팝업에는 옛 출처가 그대로 나왔다. */
+    out.push({ head: "출처: " + (META.sources || "ECMWF · NOAA · MET Norway · 기상청") });
+    return out;
+  }
+
+  /* 글자 한 덩어리. 표 셀에 마우스를 올리면 뜨는 툴팁에 쓴다.
+     (브라우저 기본 툴팁이라 굵게 같은 꾸밈을 넣을 수 없다) */
+  function detailText(locId, idx) {
+    return detailParts(locId, idx).map(function (p) {
+      return (p.head || "") + (p.value || "") + (p.tail || "");
+    }).join("\n");
+  }
+
+  /* 지도 팝업용. 값 토막만 굵게 그린다. */
+  function detailNode(locId, idx) {
+    var box = el("div", "wx-pop");
+    detailParts(locId, idx).forEach(function (p) {
+      var line = el("div", "wx-line");
+      if (p.head) line.appendChild(document.createTextNode(p.head));
+      if (p.value) line.appendChild(el("b", "wx-now", p.value));
+      if (p.tail) line.appendChild(document.createTextNode(p.tail));
+      box.appendChild(line);
+    });
+    return box;
   }
 
   // ---------------------------------------------------------------- 자료 읽기
@@ -152,8 +189,6 @@
       TIME_MS = null;      /* 시각이 바뀌었으니 다시 만든다 */
       if (!state.route) state.route = META.routes[0].id;
       state.timeIndex = nowIndex();
-      // 격자는 없을 수도 있다(설정에서 껐거나 아직 안 받았을 때).
-      // 없어도 나머지 화면은 그대로 동작해야 하므로 실패를 조용히 넘긴다.
       /* 격자와 과거 기록은 없을 수도 있다(설정에서 껐거나 아직 안 받았을 때).
          없어도 나머지 화면은 그대로 동작해야 하므로 실패를 조용히 넘긴다. */
       var g1 = fetch("data/grid.json" + bust)
@@ -910,8 +945,11 @@
   /* 면을 칠할 때 쓰는 색. 점(동그라미)보다 연하게 해서 그 위의 항로와
      지점 표시가 묻히지 않게 한다. */
   var AREA_HEX = { n: "#2fa84f", c: "#e8b53a", u: "#e05545", x: "#9e9e9e" };
-  /* 지점 동그라미 반지름(픽셀). 풍향 막대가 이 밖에서 시작한다. */
+  /* 지점 동그라미 반지름(픽셀). 풍향 쐐기가 이 밖에서 시작한다. */
   var DOT_R = 7;
+  /* 쐐기 밑변을 동그라미 지름의 몇 배로 할지.
+     1.0 이면 지름과 같고, 그건 너무 뭉툭했다. */
+  var WEDGE_W = 2 / 3;
 
   /* 격자에서 '지금 지도에 보이는 시각'에 해당하는 칸 번호를 찾는다.
      격자는 3시간 간격이고 지점 예보는 1시간 간격이라 칸 수가 다르다.
@@ -1098,19 +1136,18 @@
 
         var bx = c.x + dx * gap, by = c.y + dy * gap;            /* 밑변 가운데 */
         var tx = c.x + dx * (gap + len), ty = c.y + dy * (gap + len);  /* 뾰족한 끝 */
+        var half = DOT_R * WEDGE_W;                              /* 밑변 절반 */
 
         var arrow = L.polygon([
-          map.layerPointToLatLng(L.point(bx + nx * DOT_R, by + ny * DOT_R)),
-          map.layerPointToLatLng(L.point(bx - nx * DOT_R, by - ny * DOT_R)),
+          map.layerPointToLatLng(L.point(bx + nx * half, by + ny * half)),
+          map.layerPointToLatLng(L.point(bx - nx * half, by - ny * half)),
           map.layerPointToLatLng(L.point(tx, ty))
         ], { color: color, weight: 1, opacity: .95,
              fillColor: color, fillOpacity: .85, interactive: false }).addTo(map);
         mapLayers.push(arrow);
       }
 
-      var pop = document.createElement("div");
-      pop.className = "wx-pop";
-      pop.textContent = detailText(locId, idx);
+      var pop = detailNode(locId, idx);
 
       var up = (i % 2 === 0);
       var mk = L.circleMarker([loc.lat, loc.lon], {

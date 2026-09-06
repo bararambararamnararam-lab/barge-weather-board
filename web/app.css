@@ -296,8 +296,12 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
   background: rgba(255,255,255,.94); color: #202020; box-shadow: none;
 }
 .wx-pin::before { display: none; }
-.wx-pop { font: 12px/1.45 monospace; white-space: pre; color: #202020;
+.wx-pop { font: 12px/1.5 monospace; color: #202020;
           max-height: 46vh; overflow: auto; }
+.wx-line { white-space: pre-wrap; }
+/* 지금 값. 같은 줄에 불가 기준이 같이 있어서 굵게 해 두지 않으면
+   어느 쪽이 지금 값인지 헷갈린다. */
+.wx-pop b.wx-now { font-weight: 700; color: #000; font-size: 12.5px; }
 .leaflet-popup-content { margin: 8px 10px; width: auto !important; }
 
 /* ---------- 특보 ---------- */
