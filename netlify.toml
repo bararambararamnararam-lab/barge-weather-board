@@ -1,0 +1,31 @@
+# Netlify 배포 설정.
+# 이 파일을 프로젝트 최상위에 두면 Netlify 가 알아서 읽는다.
+
+[build]
+  # 빌드할 것이 없다. web/ 폴더를 그대로 올린다.
+  publish = "web"
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # 검색엔진에 잡히지 않게 한다(주소를 아는 사람만 보게).
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    # 예보 자료는 캐시하지 않는다. 안 그러면 옛 자료가 계속 보인다.
+    Cache-Control = "no-store, must-revalidate"
+
+[[headers]]
+  for = "/app.js"
+  [headers.values]
+    Cache-Control = "public, max-age=300"
+
+[[headers]]
+  for = "/app.css"
+  [headers.values]
+    Cache-Control = "public, max-age=300"

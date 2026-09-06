@@ -1,0 +1,9 @@
+# Netlify / Cloudflare Pages 공통 헤더 설정.
+# netlify.toml 이 있으면 그쪽이 우선이지만, Cloudflare Pages 는 이 파일을 읽는다.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+
+/data/*
+  Cache-Control: no-store, must-revalidate

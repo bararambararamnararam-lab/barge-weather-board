@@ -1,0 +1,13 @@
+{
+  "name": "바지선 운항 기상",
+  "short_name": "운항기상",
+  "description": "한·중 바지선 항로 기상·해양 예보",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

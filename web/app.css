@@ -1,0 +1,337 @@
+/* ==========================================================================
+   바지선 운항 기상 - 화면 모양
+   --------------------------------------------------------------------------
+   폰을 먼저 맞추고(mobile first), 넓은 화면에서는 아래쪽 @media 로 넓힌다.
+   색은 밝은 화면/어두운 화면 둘 다 대응한다.
+   ========================================================================== */
+
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --ink: #16202b;
+  --ink-dim: #5b6b7a;
+  --line: #d7dee5;
+  --accent: #2f5fb8;
+  --accent-ink: #ffffff;
+
+  --ok-bg: #e6f4ea;      --ok-ink: #14652c;
+  --warn-bg: #fff4d6;    --warn-ink: #8a6100;
+  --bad-bg: #fde7e7;     --bad-ink: #b3261e;
+  --none-bg: #eceef0;    --none-ink: #6b7480;
+
+  --top-h: 132px;
+  --tab-h: 56px;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --card: #182338;
+    --ink: #e8eef6;
+    --ink-dim: #94a5b8;
+    --line: #2b3a52;
+    --accent: #5b8def;
+    --accent-ink: #0b1220;
+
+    --ok-bg: #16351f;    --ok-ink: #7fe09b;
+    --warn-bg: #3a2f10;  --warn-ink: #ffd569;
+    --bad-bg: #40191a;   --bad-ink: #ff9c94;
+    --none-bg: #232f42;  --none-ink: #93a1b3;
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic",
+               "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-size: 15px; line-height: 1.45;
+  overscroll-behavior-y: none;
+}
+
+/* ---------- 맨 위 고정 막대 ---------- */
+.top {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+  background: var(--card); border-bottom: 1px solid var(--line);
+  padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+}
+.top-row { display: flex; align-items: center; gap: 8px; }
+/* 항로 이름이 길어도 한 줄로 자른다.
+   두 줄이 되면 고정 막대가 높아져 아래 내용이 가려진다.
+   (실제 높이는 app.js 가 재서 --top-h 에 넣지만, 한 줄이 보기에도 낫다.) */
+.top h1 {
+  font-size: 16px; margin: 0; flex: 1; font-weight: 700; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line);
+  background: transparent; color: var(--ink); font-size: 18px; cursor: pointer;
+}
+
+.chips { display: flex; gap: 6px; margin-top: 8px; }
+.chips.scroll { overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.chip {
+  flex: 0 0 auto; padding: 7px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: transparent; color: var(--ink);
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  min-height: 34px;
+}
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.timebar { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.timebox { flex: 1; min-width: 0; }
+.timelabel {
+  font-size: 12px; color: var(--ink-dim); text-align: center;
+  margin-top: 1px; font-variant-numeric: tabular-nums;
+}
+.step, .now {
+  height: 36px; min-width: 36px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: transparent; color: var(--ink); font-size: 16px; cursor: pointer;
+}
+.now { font-size: 12px; font-weight: 700; }
+input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); height: 26px; }
+
+/* ---------- 본문 ---------- */
+#main {
+  padding: calc(var(--top-h) + 6px) 10px
+           calc(var(--tab-h) + env(safe-area-inset-bottom) + 12px);
+  max-width: 1400px; margin: 0 auto;
+}
+.view { animation: fade .15s ease-out; }
+@keyframes fade { from { opacity: .4 } to { opacity: 1 } }
+
+.banner {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px;
+}
+.banner .pill {
+  padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
+}
+.banner .lead { flex-basis: 100%; font-size: 13px; color: var(--ink-dim); }
+
+/* ---------- 지점 카드 ---------- */
+.cards { display: flex; flex-direction: column; gap: 8px; }
+.card {
+  display: block; width: 100%; text-align: left;
+  background: var(--card); border: 1px solid var(--line);
+  border-left-width: 6px; border-radius: var(--radius);
+  padding: 11px 12px; cursor: pointer; color: inherit; font: inherit;
+}
+.card:active { transform: scale(.995); }
+/* 카드는 딱 두 줄. 1줄=번호·이름·특보·판정, 2줄=풍속·돌풍·파고·풍향 */
+.card-top { display: flex; align-items: center; gap: 6px; }
+.card-num {
+  flex: 0 0 auto; width: 21px; height: 21px; border-radius: 6px;
+  background: var(--none-bg); color: var(--none-ink);
+  font-size: 12px; font-weight: 700; display: grid; place-items: center;
+}
+.card-name {
+  flex: 1 1 auto; font-weight: 700; font-size: 15px; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-warn {
+  flex: 0 0 auto; padding: 2px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+}
+.card-badge {
+  flex: 0 0 auto; padding: 3px 9px; border-radius: 999px;
+  font-size: 13px; font-weight: 800;
+}
+/* 값 줄은 넘치면 잘라서 두 번째 줄이 세 줄로 번지지 않게 한다. */
+.card-vals {
+  display: flex; gap: 10px; margin-top: 6px;
+  font-size: 12.5px; color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden;
+}
+.card-vals span { flex: 0 0 auto; }
+.card-vals b { color: var(--ink); font-weight: 700; }
+
+/* 상태 색 */
+.s-n { background: var(--ok-bg); color: var(--ok-ink); }
+.s-c { background: var(--warn-bg); color: var(--warn-ink); }
+.s-u { background: var(--bad-bg); color: var(--bad-ink); }
+.s-x { background: var(--none-bg); color: var(--none-ink); }
+.b-n { border-left-color: #1a9e46; }
+.b-c { border-left-color: #d99b00; }
+.b-u { border-left-color: #d3392f; }
+.b-x { border-left-color: #98a3b0; }
+
+/* ---------- 지점 상세 ---------- */
+.detail-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.back {
+  border: 1px solid var(--line); background: transparent; color: var(--ink);
+  border-radius: 9px; padding: 7px 11px; font-size: 13px; cursor: pointer;
+  min-height: 36px; flex: 0 0 auto;
+}
+.detail-head h2 { margin: 0; font-size: 17px; }
+.sub { margin: 2px 0 0; font-size: 12px; color: var(--ink-dim); }
+
+.warnbox {
+  background: var(--bad-bg); color: var(--bad-ink);
+  border-radius: var(--radius); padding: 9px 12px; margin: 8px 0;
+  font-size: 13px; font-weight: 600;
+}
+
+.timeline { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.day-sep {
+  position: sticky; top: calc(var(--top-h) + 2px); z-index: 5;
+  background: var(--bg); color: var(--ink-dim);
+  font-size: 12px; font-weight: 700; padding: 7px 2px 4px;
+}
+.trow {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 9px; padding: 9px 11px;
+}
+.trow.now-row { border-color: var(--accent); border-width: 2px; }
+.thour {
+  flex: 0 0 46px; font-size: 13px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--ink-dim);
+}
+.tdot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; }
+.tval {
+  flex: 1; font-size: 14px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tsub { font-size: 12px; color: var(--ink-dim); font-weight: 500; }
+
+/* ---------- 지도 ---------- */
+/* 지도 위 도구 줄 (해역 색칠 켜기/끄기 + 범례) */
+.maptools {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.legend { font-size: 12px; color: var(--ink-dim); display: flex;
+          align-items: center; gap: 4px; }
+.legend .lg {
+  width: 13px; height: 13px; border-radius: 3px; display: inline-block;
+  margin-left: 8px;
+}
+.lg-n { background: #2fa84f; }
+.lg-c { background: #e8b53a; }
+.lg-u { background: #e05545; }
+
+/* 폰에서 지도 높이.
+   62vh 로 두면 위쪽 막대 + 도구줄 + 안내문 + 아래 탭까지 합쳐
+   한 화면을 넘어가서 스크롤해야 했다. 3/4 로 줄여 한 화면에 들어오게 한다. */
+.map { height: 46vh; min-height: 260px; border-radius: var(--radius);
+       overflow: hidden; border: 1px solid var(--line); background: #dfe8ef; }
+.wx-pin {
+  font: 700 11px/1.2 sans-serif; white-space: nowrap;
+  padding: 1px 5px; border-radius: 3px; border: 1px solid #b0b0b0;
+  background: rgba(255,255,255,.94); color: #202020; box-shadow: none;
+}
+.wx-pin::before { display: none; }
+.wx-pop { font: 12px/1.45 monospace; white-space: pre; color: #202020;
+          max-height: 46vh; overflow: auto; }
+.leaflet-popup-content { margin: 8px 10px; width: auto !important; }
+
+/* ---------- 특보 ---------- */
+.wcard {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px;
+}
+.wcard h3 { margin: 0 0 5px; font-size: 14px; }
+.wcard .none { font-size: 13px; color: var(--ink-dim); }
+.wtag {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; margin: 3px 4px 0 0;
+}
+.allwarn { margin-top: 10px; }
+.allwarn summary {
+  cursor: pointer; font-size: 14px; font-weight: 700; padding: 10px 2px;
+}
+.wtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wtable th, .wtable td {
+  border-bottom: 1px solid var(--line); padding: 6px 5px; text-align: left;
+}
+
+/* ---------- 격자 표 ---------- */
+.gridwrap {
+  overflow: auto; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card); max-height: 68vh;
+}
+table.grid { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+table.grid th, table.grid td {
+  border: 1px solid var(--line); padding: 4px 7px; text-align: center;
+}
+table.grid thead th {
+  position: sticky; top: 0; z-index: 2; background: var(--card);
+  font-size: 11px; line-height: 1.2; font-weight: 700;
+}
+table.grid td.gloc, table.grid th.gloc {
+  position: sticky; left: 0; z-index: 3; background: var(--card);
+  text-align: left; font-weight: 700; min-width: 168px; white-space: normal;
+}
+table.grid thead th.gloc { z-index: 4; }
+table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
+
+/* ---------- 아래 탭 ---------- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: flex; background: var(--card); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tab {
+  flex: 1; border: 0; background: transparent; color: var(--ink-dim);
+  font-size: 13px; font-weight: 700; padding: 0; height: var(--tab-h);
+  cursor: pointer;
+}
+.tab.on { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+
+.foot-note { font-size: 12px; color: var(--ink-dim); margin: 12px 2px 0; }
+
+/* 지도 설명은 접어 둔다. 폰에서 세 줄이나 차지해 지도를 밀어냈다. */
+.mapnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-dim); }
+.mapnote summary { cursor: pointer; padding: 4px 0; font-weight: 600; }
+.mapnote p { margin: 4px 0 0; line-height: 1.5; }
+
+.loading {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: var(--bg); color: var(--ink-dim); z-index: 90; font-size: 14px;
+}
+.loading.done { display: none; }
+.err { color: var(--bad-ink); font-weight: 700; }
+
+/* ==========================================================================
+   넓은 화면 (PC / 태블릿 가로)
+   ========================================================================== */
+.desktop-only { display: none; }
+
+@media (min-width: 900px) {
+  :root { --top-h: 104px; --tab-h: 0px; }
+  body { font-size: 14px; }
+
+  .top { padding: 10px 18px; }
+  .top-row { gap: 14px; }
+  .top h1 { font-size: 18px; flex: 0 0 auto; }
+  .chips { margin-top: 0; }
+  .top-row .chips { margin-left: 8px; }
+
+  /* 위쪽 막대를 한 줄로 합친다 */
+  .top { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .timebar { margin-top: 0; }
+
+  #main { padding: calc(var(--top-h) + 14px) 18px 28px; }
+
+  /* PC 에서는 목록과 지도를 나란히 */
+  .split { display: grid; grid-template-columns: 380px 1fr; gap: 14px; align-items: start; }
+  .map { height: 58vh; }
+
+  .tabbar { position: static; border-top: 0; background: transparent;
+            padding: 0 0 10px; }
+  .tab { height: 40px; flex: 0 0 auto; padding: 0 18px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .day-sep { top: calc(var(--top-h) + 8px); }
+}
+
+@media (min-width: 900px) {
+  .desktop-only { display: block; }
+}

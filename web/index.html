@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="color-scheme" content="light dark">
+<title>바지선 운항 기상</title>
+<link rel="stylesheet" href="app.css?v=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+
+<!-- ===== 맨 위 고정 막대 ===== -->
+<header class="top">
+  <div class="top-row">
+    <h1 id="appTitle">바지선 운항 기상</h1>
+    <button id="reloadBtn" class="icon-btn" type="button" aria-label="새로고침">↻</button>
+  </div>
+  <nav class="chips" id="routeChips" aria-label="항로 선택"></nav>
+  <div class="timebar">
+    <button id="timePrev" class="step" type="button" aria-label="이전 시각">‹</button>
+    <div class="timebox">
+      <input id="timeRange" type="range" min="0" max="0" value="0" step="1"
+             aria-label="표시할 시각">
+      <div id="timeLabel" class="timelabel">—</div>
+    </div>
+    <button id="timeNext" class="step" type="button" aria-label="다음 시각">›</button>
+    <button id="timeNow" class="now" type="button">지금</button>
+  </div>
+</header>
+
+<!-- ===== 본문 ===== -->
+<main id="main">
+
+  <!-- 요약 화면 -->
+  <section id="viewSummary" class="view">
+    <div id="summaryBanner" class="banner"></div>
+    <div id="locList" class="cards"></div>
+    <p class="foot-note" id="stalenessNote"></p>
+    <p class="foot-note" id="sourceNote"></p>
+  </section>
+
+  <!-- 지점 상세 화면 -->
+  <section id="viewDetail" class="view" hidden>
+    <div class="detail-head">
+      <button id="detailBack" class="back" type="button">‹ 목록</button>
+      <div>
+        <h2 id="detailName">지점</h2>
+        <p id="detailSub" class="sub"></p>
+      </div>
+    </div>
+    <nav class="chips scroll" id="metricChips" aria-label="항목 선택"></nav>
+    <div id="detailWarn" class="warnbox" hidden></div>
+    <div id="detailList" class="timeline"></div>
+  </section>
+
+  <!-- 지도 화면 -->
+  <section id="viewMap" class="view" hidden>
+    <div class="maptools">
+      <button id="gridToggle" class="chip on" type="button">해역 색칠 켜짐</button>
+      <span class="legend">
+        <i class="lg lg-n"></i>가능
+        <i class="lg lg-c"></i>조건
+        <i class="lg lg-u"></i>불가
+      </span>
+    </div>
+    <div id="map" class="map"></div>
+    <details class="mapnote">
+      <summary>지도 보는 법</summary>
+      <p id="gridNote"></p>
+    </details>
+  </section>
+
+  <!-- 기상특보 화면 -->
+  <section id="viewWarn" class="view" hidden>
+    <div id="warnRoute"></div>
+    <details class="allwarn">
+      <summary>전국 특보 현황 전체 보기</summary>
+      <div id="warnAll"></div>
+    </details>
+  </section>
+
+  <!-- 넓은 화면에서만 나오는 격자 표 -->
+  <section id="viewGrid" class="view desktop-only" hidden>
+    <nav class="chips scroll" id="gridChips" aria-label="표 항목 선택"></nav>
+    <div id="gridWrap" class="gridwrap"></div>
+  </section>
+
+</main>
+
+<!-- ===== 아래 고정 탭 (모바일) ===== -->
+<nav class="tabbar" id="tabbar" aria-label="화면 전환">
+  <button data-view="summary" class="tab on" type="button"><span>목록</span></button>
+  <button data-view="map" class="tab" type="button"><span>지도</span></button>
+  <button data-view="grid" class="tab" type="button"><span>표</span></button>
+  <button data-view="warn" class="tab" type="button"><span>특보</span></button>
+</nav>
+
+<div id="loading" class="loading">불러오는 중…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
