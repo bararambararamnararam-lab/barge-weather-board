@@ -1075,21 +1075,36 @@
         label = v === null ? "—" : num(v) + " " + m.unit;
       }
 
-      /* 바람이 불어 가는 방향으로 막대를 뻗는다.
+      /* 바람을 쐐기(뾰족한 삼각형)로 그린다.
 
-         길이를 위도·경도(도)로 잡으면 지도를 축소했을 때 막대가 짧아져서
-         동그라미에 묻혀 버린다. 그래서 화면 픽셀로 계산한다.
-         동그라미 반지름 바깥에서 시작하므로 어느 배율에서도 겹치지 않는다. */
+         ★ 방향을 헷갈리지 않게 하려고 쐐기로 만들었다.
+           동그라미 쪽이 넓고(지름과 같은 너비) 반대쪽으로 갈수록 좁아져
+           뾰족해진다. 그 뾰족한 끝이 '바람이 불어 가는 쪽' 이다.
+           그냥 막대면 어느 쪽으로 부는지 알 수가 없다.
+
+         ※ 표와 카드에 적히는 풍향 글자(북·남동 …)는 기상 관례대로
+           '불어오는 방향' 이다. 지도의 쐐기와는 정반대를 가리킨다.
+           그래서 아래 +180 으로 뒤집는다.
+
+         길이를 위도·경도(도)로 잡으면 지도를 축소했을 때 쐐기가 짧아져
+         동그라미에 묻힌다. 그래서 화면 픽셀로 계산한다. */
       if (s && s.wdir[idx] !== null && s.wind[idx]) {
-        var rad = (s.wdir[idx] + 180) * Math.PI / 180;
-        var dx = Math.sin(rad), dy = -Math.cos(rad);   /* 화면 좌표: y 는 아래가 + */
-        var gap = DOT_R + 4;                            /* 동그라미 밖에서 시작 */
-        var len = 14 + Math.min(s.wind[idx], 20) * 1.5; /* 바람이 셀수록 길게 */
+        var rad = (s.wdir[idx] + 180) * Math.PI / 180;   /* 불어 가는 쪽으로 뒤집기 */
+        var dx = Math.sin(rad), dy = -Math.cos(rad);     /* 화면 좌표: y 는 아래가 + */
+        var nx = -dy, ny = dx;                           /* 쐐기 밑변 방향(직각) */
+        var gap = DOT_R;                                 /* 동그라미 가장자리에서 시작 */
+        var len = 16 + Math.min(s.wind[idx], 20) * 1.6;  /* 바람이 셀수록 길게 */
         var c = map.latLngToLayerPoint([loc.lat, loc.lon]);
-        var arrow = L.polyline([
-          map.layerPointToLatLng(L.point(c.x + dx * gap, c.y + dy * gap)),
-          map.layerPointToLatLng(L.point(c.x + dx * (gap + len), c.y + dy * (gap + len)))
-        ], { color: color, weight: 3, opacity: .95 }).addTo(map);
+
+        var bx = c.x + dx * gap, by = c.y + dy * gap;            /* 밑변 가운데 */
+        var tx = c.x + dx * (gap + len), ty = c.y + dy * (gap + len);  /* 뾰족한 끝 */
+
+        var arrow = L.polygon([
+          map.layerPointToLatLng(L.point(bx + nx * DOT_R, by + ny * DOT_R)),
+          map.layerPointToLatLng(L.point(bx - nx * DOT_R, by - ny * DOT_R)),
+          map.layerPointToLatLng(L.point(tx, ty))
+        ], { color: color, weight: 1, opacity: .95,
+             fillColor: color, fillOpacity: .85, interactive: false }).addTo(map);
         mapLayers.push(arrow);
       }
 
@@ -1174,7 +1189,11 @@
   function updateGridNote() {
     var note = $("gridNote");
     if (!note) return;
-    var base = "선은 항해 순서, 짧은 막대는 바람이 불어 가는 방향입니다. "
+    var base = "선은 항해 순서입니다. 지점마다 붙은 쐐기는 바람인데, "
+             + "넓은 쪽이 지점이고 뾰족한 끝이 바람이 불어 가는 쪽입니다. "
+             + "길수록 센 바람입니다. "
+             + "(표와 카드에 적힌 풍향 글자는 기상 관례대로 '불어오는 방향' 이라 "
+             + "쐐기와는 정반대를 가리킵니다.) "
              + "동그라미를 누르면 판정 근거가 나옵니다. 지도는 OpenStreetMap 입니다.";
     if (GRID) {
       base += " 바다에 칠한 색은 약 " + Math.round(GRID.step_deg * 111) + " km 격자마다 "
