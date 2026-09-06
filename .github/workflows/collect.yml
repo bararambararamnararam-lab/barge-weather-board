@@ -5,9 +5,13 @@
 #  1) 깃허브가 빌려주는 리눅스 컴퓨터가 잠깐 켜집니다 (무료)
 #  2) 저장해 둔 데이터베이스(weather.db)를 내려받습니다
 #  3) ECMWF·NOAA·met.no·기상청에서 자료를 받아 DB에 넣습니다
-#  4) 화면용 파일(web/data/*.json)을 새로 만들어 저장소에 올립니다
+#  4) 화면용 파일(web/data/*.json)을 새로 만듭니다
 #  5) 커진 DB는 다시 'Releases' 칸에 올려 둡니다 (다음 실행 때 씀)
-#  6) 웹페이지(GitHub Pages)를 다시 배포합니다
+#  6) web/ 폴더를 통째로 꾸러미로 만들어 웹페이지로 배포합니다
+#
+# ※ 화면용 파일은 저장소에 커밋하지 않습니다.
+#   배포는 위 6번의 '꾸러미'에서 이뤄지므로 커밋할 이유가 없고,
+#   grid.json 이 786 KB 라 하루 4번 커밋하면 저장소만 계속 불어납니다.
 #
 # 왜 DB를 Releases 에 두나
 # -----------------------
@@ -27,7 +31,7 @@ on:
   workflow_dispatch:        # 깃허브 화면에서 손으로 눌러 돌릴 때 씀
 
 permissions:
-  contents: write           # web/data 커밋 + Releases 에 DB 올리기
+  contents: write           # Releases 에 DB 파일 올리기
   pages: write              # 웹페이지 배포
   id-token: write           # 웹페이지 배포에 필요한 인증
 
@@ -76,17 +80,6 @@ jobs:
           KMA_HUB_API_KEY: ${{ secrets.KMA_HUB_API_KEY }}
         run: |
           PYTHONPATH=src python -m weather.collect all
-
-      - name: 화면용 파일 커밋
-        run: |
-          git config user.name  "weather-bot"
-          git config user.email "weather-bot@users.noreply.github.com"
-          git add web/data
-          # 바뀐 게 없으면 커밋을 건너뜁니다 (에러 아님).
-          git diff --cached --quiet || git commit -m "기상자료 갱신 $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M')"
-          # 그 사이 다른 변경이 올라왔을 수 있어 한 번 맞춘 뒤 올립니다.
-          git pull --rebase --autostash
-          git push
 
       - name: 데이터베이스 다시 올려두기
         env:

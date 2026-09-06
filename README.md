@@ -732,11 +732,22 @@ https://<내계정>.github.io/weather/
 시각을 바꾸려면 `.github/workflows/collect.yml` 의 `cron:` 줄을 고친다.
 `- cron: "15 8 * * *"` 는 **UTC 기준 8시 15분** = 한국시간 17시 15분이다.
 
-#### 데이터베이스는 어디에 쌓이나
+#### 자료가 어디에 쌓이나
 
-저장소의 `Releases` 칸에 `weather.db.gz` 파일 하나로 보관된다.
-매번 덮어쓰기 때문에 이력이 쌓이지 않는다.
+| 무엇 | 어디에 | 지금 크기 | 한도 |
+| --- | --- | --- | --- |
+| 소스 코드 | 저장소 | 약 1 MB | 1 GB 넘으면 경고 |
+| 과거 기록 전부 (SQLite) | Releases 의 `weather.db.gz` | 0.04 MB | 파일 하나당 2 GB |
+| 화면 (web 폴더) | GitHub Pages | 약 0.9 MB | 사이트 1 GB, 월 전송 100 GB |
+| 실행 시간 | Actions | 하루 4회 × 8분 | 공개 저장소는 무제한 |
+
+DB 는 `Releases` 칸에 파일 하나로 보관되고 매번 덮어쓰므로 이력이 쌓이지 않는다.
 받아서 내 PC 의 `data/weather.db` 자리에 풀어 넣으면 그대로 이어서 쓸 수 있다.
+
+**화면용 JSON(`web/data/*.json`)은 저장소에 커밋하지 않는다.**
+사이트는 저장소 파일이 아니라 자동수집이 만든 '배포 꾸러미'에서 서비스되기 때문에
+커밋할 이유가 없다. 굳이 커밋하면 `grid.json`(786 KB)이 하루 4번 통째로 바뀌면서
+저장소가 1년에 300~400 MB 씩 불어나고, 내 컴퓨터와 어긋나 `git pull` 충돌이 난다.
 
 #### 무료 한도 걱정 안 해도 되나
 
@@ -823,7 +834,7 @@ claude-weather/
 │   ├─ app.css               모바일 우선 + 넓은 화면 대응
 │   ├─ app.js                화면 그리기 (프레임워크 없음)
 │   ├─ manifest.webmanifest  홈 화면에 앱처럼 추가하기
-│   └─ data/                 JSON 4개 (meta/forecast/warnings/grid)
+│   └─ data/                 JSON 4개 (meta/forecast/warnings/grid, git 제외)
 ├─ config/
 │   └─ weather_config.yaml   지점·항로·한계값·주기·보존기간
 ├─ data/                     (git 제외)
