@@ -184,6 +184,11 @@ def build_meta(config: Config, collected_at: str | None,
     return {
         "generated_at": datetime.now(config.timezone).strftime("%Y-%m-%dT%H:%M"),
         "timezone": str(config.timezone),
+        # 화면 곳곳(지도 팝업·상세 화면)에 찍히는 출처 문구.
+        # 여기 한 곳만 고치면 화면 전체가 따라 바뀐다.
+        # 예전에는 app.js 에 글자로 박아 둬서 자료원을 바꾼 뒤에도
+        # 지도 팝업에는 옛 출처가 그대로 나왔다.
+        "sources": "ECMWF IFS+WAM · NOAA GFS · MET Norway · 기상청 특보",
         "forecast_collected_at": collected_at,
         "warning_collected_at": warning_collected,
         "routes": routes,
