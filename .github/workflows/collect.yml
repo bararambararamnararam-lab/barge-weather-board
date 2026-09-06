@@ -43,10 +43,10 @@ jobs:
     timeout-minutes: 50
     steps:
       - name: 소스 내려받기
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 파이썬 준비
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -99,7 +99,7 @@ jobs:
           gh release upload db data/weather.db.gz --clobber
 
       - name: 웹페이지 꾸러미 만들기
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: web
 
@@ -112,4 +112,4 @@ jobs:
     steps:
       - name: 웹페이지 배포
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
