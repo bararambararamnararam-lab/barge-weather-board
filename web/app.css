@@ -398,7 +398,10 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
    넓은 화면 (PC / 태블릿 가로)
    ========================================================================== */
 @media (min-width: 900px) {
-  :root { --top-h: 104px; --tab-h: 0px; }
+  /* 넓은 화면에서도 시간 막대와 탭은 아래에 고정한다.
+     예전에는 흐름 안으로 되돌렸는데, 그러면 내용이 길 때 화면 맨
+     아래까지 스크롤해야 탭이 나와서 오히려 불편했다. */
+  :root { --top-h: 104px; --tab-h: 48px; }
   body { font-size: 14px; }
 
   .top { padding: 10px 18px; }
@@ -411,18 +414,24 @@ table.grid td { cursor: help; font-variant-numeric: tabular-nums; }
   .top { display: grid; grid-template-columns: 1fr; gap: 8px; }
   .timebar { margin-top: 0; }
 
-  #main { padding: calc(var(--top-h) + 14px) 18px 28px; }
+  #main {
+    padding: calc(var(--top-h) + 14px) 18px
+             calc(var(--tab-h) + var(--timebar-h) + 20px);
+  }
 
   /* PC 에서는 목록과 지도를 나란히 */
   .split { display: grid; grid-template-columns: 380px 1fr; gap: 14px; align-items: start; }
   .map { height: 58vh; }
 
-  .tabbar { position: static; border-top: 0; background: transparent;
-            padding: 0 0 10px; }
-  /* 넓은 화면에서는 아래 고정을 풀고 머리말 아래에 붙인다. */
-  .timebar { position: static; border-top: 0; background: transparent;
-             padding: 0; margin-top: 8px; }
-  .tab { height: 40px; flex: 0 0 auto; padding: 0 18px; }
+  /* 아래 고정은 그대로 두고, 안쪽 내용만 본문과 같은 폭으로 맞춘다.
+     막대 자체는 화면 좌우를 꽉 채워야 잘린 것처럼 보이지 않는다. */
+  .tabbar { justify-content: center; gap: 4px; }
+  .tab { height: var(--tab-h); flex: 0 0 auto; padding: 0 22px; }
+  .timebar {
+    padding: 6px 18px;
+    justify-content: center;
+  }
+  .timebox { max-width: 1100px; }
 
   /* 지점 카드는 넓은 화면에서도 한 줄에 하나씩 둔다.
      여러 칸으로 나누면 번호 순서가 좌우로 꺾여서 항해 순서를 읽기 어렵다. */
