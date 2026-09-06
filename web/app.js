@@ -758,31 +758,40 @@
       });
     box.appendChild(row);
 
+    /* 항목마다 한 줄씩. 예전에는 넷을 '/' 로 이어 붙여 한 문단으로
+       넣었더니 폰에서 아무 데서나 줄이 끊겨 읽기 어려웠다. */
+    box.appendChild(el("div", "legend-head", "운항 판단 기준"));
+
     var order = ["wind", "gust", "wave", "vis"];
-    var lines = [];
+    var table = el("div", "legend-rules");
     order.forEach(function (k) {
       var t = META.thresholds[k];
       if (!t || t.auto === false) return;
       var unit = META.units[k] || "";
-      var name = META.labels[k] || k;
       var parts = [];
       if (t.caution_at !== null && t.caution_at !== undefined) {
-        parts.push("조건부 " + t.caution_at + unit + " 이상");
+        parts.push(["c", "조건부 " + t.caution_at + unit + " 이상"]);
       }
       if (t.unavailable_at !== null && t.unavailable_at !== undefined) {
-        parts.push("불가 " + t.unavailable_at + unit + " 이상");
+        parts.push(["u", "불가 " + t.unavailable_at + unit + " 이상"]);
       }
       if (t.caution_below !== null && t.caution_below !== undefined) {
-        parts.push("조건부 " + t.caution_below + unit + " 미만");
+        parts.push(["c", "조건부 " + t.caution_below + unit + " 미만"]);
       }
       if (t.unavailable_below !== null && t.unavailable_below !== undefined) {
-        parts.push("불가 " + t.unavailable_below + unit + " 미만");
+        parts.push(["u", "불가 " + t.unavailable_below + unit + " 미만"]);
       }
-      if (parts.length) lines.push(name + " " + parts.join(" · "));
-    });
+      if (!parts.length) return;
 
-    box.appendChild(el("p", "legend-note",
-      "운항 판단 기준 — " + lines.join(" / ")));
+      table.appendChild(el("div", "legend-key", META.labels[k] || k));
+      var val = el("div", "legend-val");
+      parts.forEach(function (p, i) {
+        if (i) val.appendChild(document.createTextNode(" · "));
+        val.appendChild(el("span", "legend-" + p[0], p[1]));
+      });
+      table.appendChild(val);
+    });
+    box.appendChild(table);
     box.appendChild(el("p", "legend-note",
       "네 가지 중 하나라도 걸리면 그 칸은 나쁜 쪽 색을 따른다. "
       + "여기에 기상청 특보가 더해진다(특보가 있으면 한 단계 더 나쁘게 본다). "
