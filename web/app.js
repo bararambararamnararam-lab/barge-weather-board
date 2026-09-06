@@ -25,6 +25,10 @@
   };
   var map = null, mapLayers = [];
   var mapFitted = false;   /* 항로를 바꿀 때만 화면을 다시 맞춘다 */
+  var mapDrawing = false;  /* 그리는 중 또 그리지 않게 하는 빗장 */
+  var mapWaits = 0;        /* 지도 칸 크기가 잡히기를 기다린 횟수 */
+  /* 이 항로를 보기에 알맞은 배율 범위. 여기를 벗어나면 뭔가 잘못된 것이다. */
+  var MAP_ZOOM_MIN = 4, MAP_ZOOM_MAX = 12;
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -962,6 +966,7 @@
      안 그러면 지도가 그냥 비어 보여서 무엇이 잘못됐는지 알 수가 없다. */
   function renderMap() {
     try {
+      mapDrawing = true;
       renderMapInner();
     } catch (err) {
       var box = $("map");
@@ -974,10 +979,26 @@
         box.appendChild(p);
       }
       if (window.console) console.error("renderMap 실패", err);
+    } finally {
+      mapDrawing = false;
     }
   }
 
   function renderMapInner() {
+    /* 지도 칸이 아직 화면에 안 나타났으면(다른 탭에 있었거나 방금 전환)
+       크기가 0x0 이다. 그 상태로 그리면 배율 계산이 망가진다.
+       크기가 잡힐 때까지 잠깐 기다렸다 다시 시도한다. */
+    var box0 = $("map");
+    if (box0 && (!box0.offsetWidth || !box0.offsetHeight)) {
+      /* 혹시 끝내 크기가 안 잡히더라도 무한히 되풀이하지 않게 횟수를 센다. */
+      if (mapWaits < 12) {
+        mapWaits += 1;
+        setTimeout(function () { if (state.view === "map") renderMap(); }, 80);
+      }
+      return;
+    }
+    mapWaits = 0;
+
     if (typeof L === "undefined") {
       $("map").innerHTML =
         '<p class="foot-note err" style="padding:16px">'
@@ -997,8 +1018,11 @@
       map.setView([35.0, 126.0], 6);
       /* 배율이 바뀌면 풍향 막대를 다시 그린다.
          막대를 픽셀로 계산하므로 배율이 달라지면 좌표가 어긋난다. */
+      /* 배율이 바뀌면 풍향 막대를 다시 그린다(막대를 픽셀로 계산하므로).
+         단, 그리는 중에 일어난 배율 변경은 무시한다. 안 그러면
+         그리기 -> 배율변경 -> 다시 그리기 가 서로 물려 값이 튄다. */
       map.on("zoomend", function () {
-        if (state.view === "map") renderMap();
+        if (state.view === "map" && !mapDrawing) renderMap();
       });
     }
     mapLayers.forEach(function (l) { map.removeLayer(l); });
@@ -1088,12 +1112,29 @@
 
     /* 화면 맞추기는 항로를 처음 그릴 때만 한다.
        배율을 바꿀 때마다 다시 맞추면 사용자가 확대한 것이 도로 풀린다. */
-    if (!mapFitted) {
+    function fitAll() {
       if (allPts.length === 1) map.setView(allPts[0], 9);
       else map.fitBounds(L.latLngBounds(allPts), { padding: [40, 40] });
+    }
+
+    if (!mapFitted) {
+      fitAll();
       mapFitted = true;
     }
-    setTimeout(function () { map.invalidateSize(); }, 60);
+
+    /* 크기를 다시 재고, 그 뒤에 배율이 멀쩡한지 확인한다.
+       다른 탭에 있는 동안 지도 칸이 0x0 이었다면 배율이 엉뚱한 값으로
+       남아 있을 수 있다(실제로 '말도 안 되게 확대' 되는 일이 있었다). */
+    setTimeout(function () {
+      if (!map) return;
+      mapDrawing = true;
+      map.invalidateSize();
+      var z = map.getZoom();
+      if (!isFinite(z) || z < MAP_ZOOM_MIN || z > MAP_ZOOM_MAX) {
+        fitAll();
+      }
+      mapDrawing = false;
+    }, 60);
   }
 
   // ---------------------------------------------------------------- 화면 전환
