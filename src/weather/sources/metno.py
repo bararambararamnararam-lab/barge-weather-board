@@ -41,7 +41,8 @@ def collect_wind(config: Config, valid_times: set[str],
     valid_times 에 있는 시각만 남긴다. ECMWF 가 만든 시간축에 맞추기 위해서다.
     (met.no 는 1시간 간격이라 ECMWF 의 3/6시간 시각을 모두 포함한다.)
     """
-    locs = locations if locations is not None else list(config.locations.values())
+    # geometry_only(길 꺾는 점)는 기상을 받지 않는다.
+    locs = locations if locations is not None else config.forecast_locations
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
     tz = config.timezone

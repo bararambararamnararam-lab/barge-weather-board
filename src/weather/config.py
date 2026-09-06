@@ -35,6 +35,10 @@ class Location:
     type: str
     country: str
     kma_zones: tuple[str, ...]
+    # True 면 '길을 그리기 위한 꺾이는 점' 일 뿐이라 기상을 받지 않는다.
+    # (예: 고현항에서 거제도를 돌아 나가는 두 점. 거리 계산에는 꼭 필요하지만
+    #  좁은 내만이라 기상을 따로 볼 이유가 없다.)
+    geometry_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -45,6 +49,9 @@ class Route:
     short: str = ""                 # 화면 단추에 쓰는 짧은 이름 (예: 영성, CSME)
     main_ids: tuple[str, ...] = ()  # 한 줄로 이어지는 본선 경로
     destination_ids: tuple[str, ...] = ()  # 본선 끝에서 갈라지는 도착지들
+    # 거리를 재고 지도에 선을 그릴 때 쓰는 전체 순서.
+    # location_ids 와 달리 geometry_only 지점까지 들어 있다.
+    path_ids: tuple[str, ...] = ()
 
     @property
     def label(self) -> str:
@@ -91,6 +98,11 @@ class Config:
     @property
     def warning_rules(self) -> dict[str, Any]:
         return self.raw.get("kma_warning_rules", {})
+
+    @property
+    def forecast_locations(self) -> list[Location]:
+        """기상을 실제로 받아야 하는 지점만. (길 꺾는 점은 뺀다)"""
+        return [loc for loc in self.locations.values() if not loc.geometry_only]
 
     def route_locations(self, route_id: str) -> list[Location]:
         """항로 ID를 주면 그 항로에 포함된 위치 객체를 항해 순서대로 돌려준다."""
@@ -149,6 +161,7 @@ def load_config(path: Path | str | None = None) -> Config:
             type=str(body.get("type", "unknown")),
             country=str(body.get("country", "")),
             kma_zones=tuple(str(z) for z in (body.get("kma_zones") or [])),
+            geometry_only=bool(body.get("geometry_only", False)),
         )
 
     routes: dict[str, Route] = {}
@@ -167,13 +180,17 @@ def load_config(path: Path | str | None = None) -> Config:
                 f"항로 '{route_id}' 가 존재하지 않는 위치 ID를 가리킵니다: {', '.join(unknown)}\n"
                 "locations: 목록에 해당 ID가 있는지 확인하세요."
             )
+        # 화면 목록·표에는 기상을 보는 지점만 넣는다.
+        # 길을 꺾기 위해 찍어 둔 점(geometry_only)은 목록에 나오면 방해만 된다.
+        shown = [lid for lid in ordered if not locations[lid].geometry_only]
         routes[route_id] = Route(
             id=route_id,
             name=str(body.get("name", route_id)),
-            location_ids=tuple(ordered),
+            location_ids=tuple(shown),
             short=str(body.get("short", "") or ""),
-            main_ids=tuple(main),
+            main_ids=tuple(m for m in main if not locations[m].geometry_only),
             destination_ids=tuple(d for d in destinations if d in locations),
+            path_ids=tuple(ordered),
         )
 
     return Config(raw=raw, locations=locations, routes=routes)

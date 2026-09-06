@@ -90,7 +90,8 @@ def collect_forecast(config: Config, locations: list[Location] | None = None,
       3) 격자 원자료. 새로 받았을 때만 채워지고, 사이클이 그대로면 비어 있다.
          (비어 있으면 이미 만들어 둔 grid.json 을 그대로 쓰면 된다.)
     """
-    locs = locations if locations is not None else list(config.locations.values())
+    # geometry_only(길 꺾는 점)는 기상을 받지 않는다.
+    locs = locations if locations is not None else config.forecast_locations
     warnings: list[str] = []
     grid_raw: dict[str, Any] = {}
     state = _load_state()

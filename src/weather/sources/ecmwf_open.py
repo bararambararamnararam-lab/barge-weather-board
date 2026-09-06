@@ -165,7 +165,8 @@ def collect(config: Config, locations: list[Location] | None = None,
       3) 격자 자료 {"times": [...], "series": {항목: [스텝][칸]}}
          grid_cells 를 주지 않으면 빈 값이다.
     """
-    locs = locations if locations is not None else list(config.locations.values())
+    # geometry_only(길 꺾는 점)는 기상을 받지 않는다.
+    locs = locations if locations is not None else config.forecast_locations
     points = [(loc.id, loc.latitude, loc.longitude) for loc in locs]
 
     client = Client(source="ecmwf")

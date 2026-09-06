@@ -24,6 +24,7 @@ web/ 폴더는 '그대로 인터넷에 올릴 수 있는 정적 사이트'다.
 from __future__ import annotations
 
 import json
+import math
 import shutil
 import sys
 from datetime import datetime, timedelta
@@ -89,11 +90,56 @@ def _round(value: Any, digits: int = 2) -> Any:
         return None
 
 
+def distance_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """두 좌표 사이 거리(해리). 지구를 공으로 보고 잰 대권 거리다.
+
+    실제 항로는 섬을 피해 돌아가므로 이보다 조금 길다.
+    다만 우리 지점들이 이미 항로를 따라 찍혀 있어서, 지점 사이만
+    직선으로 봐도 실제 항정과 거의 같다.
+    (실제로 이 방법으로 잰 고현항~영성이 404 해리로, 실측과 일치한다.)
+    """
+    radius = 3440.065          # 지구 반지름을 해리로
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = p2 - p1
+    dl = math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * radius * math.asin(math.sqrt(h))
+
+
+def route_legs(config: Config, route: Any) -> list[dict[str, Any]]:
+    """항로를 이루는 구간 목록. 각 구간의 두 지점과 거리(해리).
+
+    본선을 순서대로 잇고, 도착지는 본선 마지막 지점에서 각각 뻗는다.
+    (영성 묘박지에서 영성법인·영성가야로 갈라지는 모양)
+    """
+    legs: list[dict[str, Any]] = []
+    # path_ids 를 쓴다. 길을 꺾기 위한 점까지 들어 있어야 실제 항정이 나온다.
+    # (고현항 -> 거제 동방을 직선으로 이으면 거제도 육지를 뚫는다)
+    dest_set = set(route.destination_ids)
+    main = [lid for lid in route.path_ids if lid not in dest_set]
+    for i in range(len(main) - 1):
+        a, b = config.locations[main[i]], config.locations[main[i + 1]]
+        legs.append({"from": a.id, "to": b.id,
+                     "nm": round(distance_nm(a.latitude, a.longitude,
+                                             b.latitude, b.longitude), 1)})
+    if main:
+        last = config.locations[main[-1]]
+        for dest_id in route.destination_ids:
+            b = config.locations[dest_id]
+            legs.append({"from": last.id, "to": b.id,
+                         "nm": round(distance_nm(last.latitude, last.longitude,
+                                                 b.latitude, b.longitude), 1)})
+    return legs
+
+
 def build_meta(config: Config, collected_at: str | None,
                warning_collected: str | None) -> dict[str, Any]:
     """설정과 지점 정보를 담은 meta.json 내용을 만든다."""
+    voyage = config.raw.get("voyage") or {}
     locations: dict[str, Any] = {}
-    for loc in config.locations.values():
+    # 길 꺾는 점은 화면에 안 쓰므로 내보내지 않는다.
+    # (지도 선은 route.legs 의 좌표로 그린다)
+    for loc in config.forecast_locations:
         locations[loc.id] = {
             "name": loc.name,
             "lat": loc.latitude,
@@ -114,6 +160,14 @@ def build_meta(config: Config, collected_at: str | None,
             # main 은 한 줄로 잇고, dests 는 main 의 마지막 지점에서 각각 뻗는다.
             "main": list(route.main_ids),
             "dests": list(route.destination_ids),
+            # 구간별 거리(해리). 소요 시간 계산에 쓴다.
+            "legs": route_legs(config, route),
+            # 지도에 선을 그릴 좌표. 길 꺾는 점까지 들어 있어서
+            # 거제도를 뚫지 않고 실제 항로대로 그려진다.
+            "path": [[config.locations[lid].latitude,
+                      config.locations[lid].longitude]
+                     for lid in route.path_ids
+                     if lid not in set(route.destination_ids)],
         })
 
     thresholds: dict[str, Any] = {}
@@ -134,6 +188,19 @@ def build_meta(config: Config, collected_at: str | None,
         "warning_collected_at": warning_collected,
         "routes": routes,
         "locations": locations,
+        # 소요 시간 계산에 쓰는 값. 화면에서 그때그때 계산한다.
+        "voyage": {
+            "vessels": [
+                {"id": str(v.get("id", "")),
+                 "name": str(v.get("name", "")),
+                 "short": str(v.get("short", v.get("name", ""))),
+                 "speed_kn": float(v.get("speed_kn", 6.5))}
+                for v in (voyage.get("vessels") or [])
+            ],
+            "caution_factor": float(voyage.get("caution_factor", 0.75)),
+            "wait_when_unavailable": bool(voyage.get("wait_when_unavailable", True)),
+            "max_wait_hours": float(voyage.get("max_wait_hours", 72)),
+        },
         "metrics": METRICS,
         "thresholds": thresholds,
         "labels": {short: COLUMN_LABELS.get(col, short)

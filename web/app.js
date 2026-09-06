@@ -144,6 +144,7 @@
       fetch("data/warnings.json" + bust).then(function (r) { return r.json(); })
     ]).then(function (all) {
       META = all[0]; FC = all[1]; WARN = all[2];
+      TIME_MS = null;      /* 시각이 바뀌었으니 다시 만든다 */
       if (!state.route) state.route = META.routes[0].id;
       state.timeIndex = nowIndex();
       // 격자는 없을 수도 있다(설정에서 껐거나 아직 안 받았을 때).
@@ -307,6 +308,231 @@
     });
   }
 
+  /* ======================================================================
+     소요 시간(ETA) 계산
+
+     "지금 이 지점에 있는 배가 목적지까지 몇 시간 걸릴까" 를 낸다.
+
+     핵심은 '시간을 흘려보내며' 계산한다는 점이다.
+     배가 3번 지점을 지날 때는 출발로부터 몇 시간 뒤이므로 그 시각의 예보를
+     봐야 한다. 지금 기상만 보고 끝까지 계산하지 않는다.
+
+     한 시간씩 전진시키면서 그 구간의 운항 판단을 보고
+       가능(초록)   -> 기준 속력 그대로
+       조건부(노랑) -> 기준 속력 x caution_factor
+       불가(빨강)   -> 그 자리에서 대기 (설정에 따라 통과도 가능)
+     ====================================================================== */
+
+  var TIME_MS = null;          /* FC.times 를 밀리초로 바꿔 둔 것 (계산용) */
+
+  function timeMs() {
+    if (!TIME_MS) {
+      TIME_MS = FC.times.map(function (t) {
+        return new Date(t + ":00").getTime();
+      });
+    }
+    return TIME_MS;
+  }
+
+  /* 출발 시각에서 h 시간 뒤에 해당하는 예보 칸 번호.
+     예보가 3~6시간 간격이라 딱 맞는 칸이 없으므로 그 시각 이하 중 가장 가까운 칸. */
+  function slotAfter(startIdx, h) {
+    var ms = timeMs();
+    var target = ms[startIdx] + h * 3600000;
+    var best = startIdx;
+    for (var i = startIdx; i < ms.length; i++) {
+      if (ms[i] <= target) best = i; else break;
+    }
+    return best;
+  }
+
+  var RANK = { x: -1, n: 0, c: 1, u: 2 };
+
+  /* 한 구간의 상태. 양 끝 지점 중 나쁜 쪽을 쓴다(보수적).
+     길 꺾는 점은 기상이 없으므로 값이 있는 쪽만 본다. */
+  function legStatus(leg, idx) {
+    var worst = null;
+    [leg.from, leg.to].forEach(function (id) {
+      var ss = series(id);
+      if (!ss || !ss.st) return;
+      var st = ss.st[idx];
+      if (!st || st === "x") return;
+      if (worst === null || RANK[st] > RANK[worst]) worst = st;
+    });
+    return worst || "n";     /* 양쪽 다 자료가 없으면 막지 않는다 */
+  }
+
+  /* 구간들을 순서대로 항해했을 때 걸리는 시간.
+     돌려주는 값: {hours, wait, beyond} 또는 못 가면 null
+       hours  : 총 소요 시간
+       wait   : 그중 기상 때문에 멈춰 있던 시간
+       beyond : 예보 기간을 넘어선 채로 계산했는지 */
+  function runLegs(legs, startIdx, speedKn) {
+    var v = META.voyage || {};
+    var cautionF = (v.caution_factor === undefined) ? 0.75 : v.caution_factor;
+    var waitMode = v.wait_when_unavailable !== false;
+    var maxWait = v.max_wait_hours || 72;
+
+    var hours = 0, wait = 0, beyond = false;
+    var lastIdx = FC.times.length - 1;
+
+    for (var i = 0; i < legs.length; i++) {
+      var left = legs[i].nm;
+      var guard = 0;
+      while (left > 0.0001) {
+        var idx = slotAfter(startIdx, hours);
+        if (idx >= lastIdx) beyond = true;
+        var st = legStatus(legs[i], idx);
+        var f = (st === "n") ? 1 : ((st === "c") ? cautionF : 0);
+
+        if (f <= 0) {
+          if (waitMode) {
+            hours += 1; wait += 1;
+            if (wait > maxWait) return null;   /* 예보 기간 안에는 못 간다 */
+            continue;
+          }
+          f = cautionF;      /* 기상을 무시하고 통과하는 설정 */
+        }
+        left -= speedKn * f;   /* 한 시간 전진 */
+        hours += 1;
+        if (++guard > 1000) return null;
+      }
+    }
+    return { hours: hours, wait: wait, beyond: beyond };
+  }
+
+  /* 항로를 본선과 도착지 가지로 나눈다. */
+  function routeShape(route) {
+    var dests = route.dests || [];
+    var trunk = [], branch = [];
+    (route.legs || []).forEach(function (l) {
+      if (dests.indexOf(l.to) >= 0) branch.push(l); else trunk.push(l);
+    });
+    var nodes = trunk.length ? [trunk[0].from] : [];
+    trunk.forEach(function (l) { nodes.push(l.to); });
+    return { trunk: trunk, branch: branch, nodes: nodes };
+  }
+
+  /* 어떤 지점에서 앞(도착지들)과 뒤(출발지)로 각각 얼마나 걸리는지. */
+  function etaFor(locId, startIdx) {
+    var route = routeObj();
+    if (!route.legs || !route.legs.length) return null;
+    var shape = routeShape(route);
+    var vessels = (META.voyage && META.voyage.vessels) || [];
+    if (!vessels.length) return null;
+
+    var pos = shape.nodes.indexOf(locId);
+    var onBranch = (route.dests || []).indexOf(locId) >= 0;
+    var forward = [], backward = [];
+
+    if (onBranch) {
+      /* 도착지에 이미 있는 배. 앞으로 갈 곳은 없고 돌아가는 길만 있다. */
+      var myLeg = null;
+      shape.branch.forEach(function (l) { if (l.to === locId) myLeg = l; });
+      if (myLeg) {
+        var back = [{ from: myLeg.to, to: myLeg.from, nm: myLeg.nm }];
+        var upto = shape.trunk.slice().reverse().map(function (l) {
+          return { from: l.to, to: l.from, nm: l.nm };
+        });
+        backward.push({ id: shape.nodes[0], legs: back.concat(upto) });
+      }
+    } else if (pos >= 0) {
+      /* 본선 위의 배. 앞으로는 각 도착지까지, 뒤로는 출발지까지. */
+      var ahead = shape.trunk.slice(pos);
+      shape.branch.forEach(function (b) {
+        forward.push({ id: b.to, legs: ahead.concat([b]) });
+      });
+      if (pos > 0) {
+        backward.push({
+          id: shape.nodes[0],
+          legs: shape.trunk.slice(0, pos).reverse().map(function (l) {
+            return { from: l.to, to: l.from, nm: l.nm };
+          })
+        });
+      }
+    }
+
+    function pack(list) {
+      return list.map(function (t) {
+        var runs = vessels.map(function (ves) {
+          return { vessel: ves, result: runLegs(t.legs, startIdx, ves.speed_kn) };
+        });
+        var nm = 0;
+        t.legs.forEach(function (l) { nm += l.nm; });
+        return { id: t.id, nm: nm, runs: runs };
+      });
+    }
+    return { forward: pack(forward), backward: pack(backward) };
+  }
+
+  /* 도착 예정 시각을 사람이 읽는 글로. */
+  function arriveText(startIdx, hours) {
+    var d = new Date(timeMs()[startIdx] + hours * 3600000);
+    var days = ["일", "월", "화", "수", "목", "금", "토"];
+    return (d.getMonth() + 1) + "/" + d.getDate()
+      + "(" + days[d.getDay()] + ") "
+      + ("0" + d.getHours()).slice(-2) + "시";
+  }
+
+  function renderEta(locId) {
+    var box = $("detailEta");
+    if (!box) return;
+    box.innerHTML = "";
+    var eta = etaFor(locId, state.timeIndex);
+    if (!eta || (!eta.forward.length && !eta.backward.length)) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    box.appendChild(el("div", "eta-title",
+      fmtTime(FC.times[state.timeIndex]) + " 에 이 지점에서 출발하면"));
+
+    [["앞으로", eta.forward], ["돌아가기", eta.backward]].forEach(function (pair) {
+      if (!pair[1].length) return;
+      var row = el("div", "eta-row");
+      row.appendChild(el("div", "eta-dir", pair[0]));
+      var list = el("div", "eta-targets");
+
+      pair[1].forEach(function (t) {
+        var line = el("div", "eta-item");
+        var name = META.locations[t.id] ? META.locations[t.id].name : t.id;
+        line.appendChild(el("span", "eta-name",
+          name + " (" + t.nm.toFixed(0) + "해리)"));
+
+        t.runs.forEach(function (r) {
+          var sp = el("span", "eta-vessel");
+          sp.appendChild(document.createTextNode(r.vessel.short + " "));
+          if (!r.result) {
+            sp.appendChild(el("b", "eta-none", "예보 기간 내 불가"));
+          } else {
+            var h = r.result.hours;
+            var txt = h + "시간";
+            if (h >= 24) txt += " (" + Math.floor(h / 24) + "일 " + (h % 24) + "시간)";
+            sp.appendChild(el("b", null, txt));
+            sp.appendChild(document.createTextNode(
+              " · " + arriveText(state.timeIndex, h) + " 도착"));
+            if (r.result.wait > 0) {
+              sp.appendChild(document.createTextNode(" · "));
+              sp.appendChild(el("b", "eta-wait", "대기 " + r.result.wait + "시간"));
+            }
+          }
+          line.appendChild(sp);
+        });
+        list.appendChild(line);
+      });
+      row.appendChild(list);
+      box.appendChild(row);
+    });
+
+    var speeds = ((META.voyage && META.voyage.vessels) || []).map(function (v) {
+      return v.short + " " + v.speed_kn + "노트";
+    }).join(" / ");
+    box.appendChild(el("p", "eta-note",
+      "기상이 좋을 때 " + speeds + " 기준입니다. "
+      + "조건부(노랑) 구간은 느려지고, 불가(빨강) 구간은 기상이 나아질 때까지 "
+      + "기다리는 것으로 계산합니다. 지나가는 시각의 예보를 그때그때 반영합니다."));
+  }
+
   function renderDetail() {
     var locId = state.location || routeObj().locations[0];
     state.location = locId;
@@ -317,6 +543,8 @@
     $("detailSub").textContent =
       loc.lat.toFixed(4) + ", " + loc.lon.toFixed(4)
       + (loc.zones.length ? " · 특보구역 " + loc.zones.join(", ") : "");
+
+    renderEta(locId);
 
     renderMetricChips("metricChips", state.metric, function (k) {
       state.metric = k; renderDetail();
@@ -600,7 +828,10 @@
        전부 한 줄로 이으면 영성법인 → 영성가야 사이에 없는 항로가 그려진다. */
     var main = (route.main && route.main.length) ? route.main : route.locations;
     var dests = route.dests || [];
-    var line = main.map(at);
+    /* 선은 route.path 로 그린다. 길을 꺾는 점까지 들어 있어서
+       고현항에서 거제도를 돌아 나가는 실제 항로대로 그려진다.
+       (지점만 이으면 거제도 육지를 뚫는 직선이 된다) */
+    var line = (route.path && route.path.length) ? route.path : main.map(at);
     mapLayers.push(L.polyline(line, LINE).addTo(map));
 
     var branchAt = main.length ? at(main[main.length - 1]) : null;

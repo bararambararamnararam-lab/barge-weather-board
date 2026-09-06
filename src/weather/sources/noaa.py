@@ -92,7 +92,8 @@ def collect_visibility(config: Config, steps: list[int],
     GFS 는 120시간까지 1시간 간격, 그 뒤 3시간 간격이라
     ECMWF 의 3/6시간 스텝은 전부 존재한다.
     """
-    locs = locations if locations is not None else list(config.locations.values())
+    # geometry_only(길 꺾는 점)는 기상을 받지 않는다.
+    locs = locations if locations is not None else config.forecast_locations
     points = [(loc.id, loc.latitude, loc.longitude) for loc in locs]
 
     session = requests.Session()

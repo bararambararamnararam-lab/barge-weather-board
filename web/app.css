@@ -292,6 +292,37 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
   border-bottom: 1px solid var(--line); padding: 6px 5px; text-align: left;
 }
 
+/* ---------- 소요 시간 (ETA) ---------- */
+.etabox {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px;
+}
+.eta-title {
+  font-size: 12px; color: var(--ink-dim); font-weight: 700;
+  margin-bottom: 8px; letter-spacing: .02em;
+}
+.eta-row {
+  display: grid; grid-template-columns: 74px 1fr; gap: 8px;
+  align-items: start; padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+.eta-row:first-of-type { border-top: 0; }
+.eta-dir {
+  font-size: 12px; font-weight: 700; color: var(--ink-dim);
+  padding-top: 2px;
+}
+.eta-targets { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.eta-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.eta-name { font-size: 13px; font-weight: 700; flex: 0 0 auto; }
+.eta-vessel {
+  font-size: 12px; color: var(--ink-dim);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.eta-vessel b { color: var(--ink); font-weight: 700; }
+.eta-wait { color: var(--warn-ink); font-weight: 700; }
+.eta-none { color: var(--bad-ink); font-weight: 700; }
+.eta-note { font-size: 11.5px; color: var(--ink-dim); margin-top: 7px; line-height: 1.5; }
+
 /* ---------- 격자 표 ---------- */
 .gridwrap {
   overflow: auto; border: 1px solid var(--line); border-radius: var(--radius);
