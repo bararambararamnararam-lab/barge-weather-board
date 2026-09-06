@@ -308,14 +308,14 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
   margin-bottom: 8px; letter-spacing: .02em;
 }
 .eta-row {
-  display: grid; grid-template-columns: 74px 1fr; gap: 8px;
+  display: grid; grid-template-columns: 84px 1fr; gap: 8px;
   align-items: start; padding: 6px 0;
   border-top: 1px solid var(--line);
 }
 .eta-row:first-of-type { border-top: 0; }
 .eta-dir {
-  font-size: 12px; font-weight: 700; color: var(--ink-dim);
-  padding-top: 2px;
+  font-size: 12px; font-weight: 700; color: var(--ink);
+  padding-top: 2px; white-space: nowrap;
 }
 .eta-targets { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .eta-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }

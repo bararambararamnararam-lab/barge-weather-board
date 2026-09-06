@@ -470,6 +470,15 @@
     return { forward: pack(forward), backward: pack(backward) };
   }
 
+  /* 지명에서 뒤쪽 낱말만. "거제 고현항" -> "고현항"
+     방향 표시 칸이 좁아서 앞의 행정구역 이름은 뗀다. */
+  function tailName(locId) {
+    var loc = META.locations[locId];
+    var n = loc ? loc.name : locId;
+    var parts = String(n).split(" ");
+    return parts[parts.length - 1];
+  }
+
   /* 도착 예정 시각을 사람이 읽는 글로. */
   function arriveText(startIdx, hours) {
     var d = new Date(timeMs()[startIdx] + hours * 3600000);
@@ -492,7 +501,15 @@
     box.appendChild(el("div", "eta-title",
       fmtTime(FC.times[state.timeIndex]) + " 에 이 지점에서 출발하면"));
 
-    [["앞으로", eta.forward], ["돌아가기", eta.backward]].forEach(function (pair) {
+    /* 방향을 '앞으로/돌아가기' 대신 그쪽 끝 지명으로 적는다.
+       뱃사람 말로 "영성 향", "고현항 향" 이 훨씬 바로 읽힌다. */
+    var route0 = routeObj();
+    var shape0 = routeShape(route0);
+    var startId = shape0.nodes.length ? shape0.nodes[0] : null;
+    var aheadLabel = (route0.short || "도착지") + " 向";
+    var backLabel = (startId ? tailName(startId) : "출발지") + " 向";
+
+    [[aheadLabel, eta.forward], [backLabel, eta.backward]].forEach(function (pair) {
       if (!pair[1].length) return;
       var row = el("div", "eta-row");
       row.appendChild(el("div", "eta-dir", pair[0]));
@@ -1027,27 +1044,36 @@
   }
 
   // ---------------------------------------------------------------- 시작
+  /* 시각이 바뀌면 다시 그려야 하는 것들.
+     네 군데(막대 끌기·‹·›·지금)에서 똑같이 불러야 하는데 예전에는
+     각자 조금씩 다르게 적어 둬서, 상세 화면의 소요 시간이 시각을 옮겨도
+     그대로였다. 한 곳으로 모은다.
+
+     표(格子)는 여기 없다. 표는 시각 하나가 아니라 전체 기간을
+     한꺼번에 보여 주므로 다시 그릴 것이 없다. */
+  function refreshForTime() {
+    renderTimeBar();
+    renderSummary();                                   /* 신호등 */
+    if (state.view === "map") renderMap();
+    if (state.view === "detail") renderDetail();       /* 소요 시간 포함 */
+  }
+
   function wire() {
     $("timeRange").addEventListener("input", function (e) {
       state.timeIndex = Number(e.target.value);
-      renderTimeBar(); renderSummary();
-      if (state.view === "map") renderMap();
-      if (state.view === "grid") renderGrid();
+      refreshForTime();
     });
     $("timePrev").onclick = function () {
       state.timeIndex = Math.max(0, state.timeIndex - 1);
-      renderTimeBar(); renderSummary();
-      if (state.view === "map") renderMap();
+      refreshForTime();
     };
     $("timeNext").onclick = function () {
       state.timeIndex = Math.min(FC.times.length - 1, state.timeIndex + 1);
-      renderTimeBar(); renderSummary();
-      if (state.view === "map") renderMap();
+      refreshForTime();
     };
     $("timeNow").onclick = function () {
       state.timeIndex = nowIndex();
-      renderTimeBar(); renderSummary();
-      if (state.view === "map") renderMap();
+      refreshForTime();
     };
     $("detailBack").onclick = function () { show("summary"); };
     $("gridToggle").onclick = function () {
