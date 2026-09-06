@@ -1,0 +1,639 @@
+<title>웨더보드 배포 설명서</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* ===== 색 토큰 : 항로도의 바다·해도 느낌 ===== */
+  :root{
+    --bg:#eef3f2;
+    --surface:#ffffff;
+    --surface-2:#e2ece9;
+    --ink:#12262d;
+    --ink-soft:#4f6b73;
+    --ink-faint:#7c9399;
+    --accent:#157b8a;
+    --accent-ink:#ffffff;
+    --accent-soft:#d8ecec;
+    --line:#cdddda;
+    --line-strong:#a9c2be;
+    --warn-bg:#fbead9;
+    --warn-ink:#8a4a1a;
+    --warn-border:#e8b788;
+    --ok-bg:#e3f3e6;
+    --ok-ink:#276a3c;
+    --ok-border:#a9d9b6;
+    --code-bg:#0d1f26;
+    --code-ink:#cdeef0;
+    --code-accent:#6fd6e4;
+    --code-ph:#f0a35c;
+    --shadow:0 1px 2px rgba(18,38,45,.06), 0 8px 24px -12px rgba(18,38,45,.18);
+    --font-display:"Gowun Batang","Noto Serif KR",serif;
+    --font-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    --font-mono:"IBM Plex Mono","D2Coding",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b1a20;
+      --surface:#10262e;
+      --surface-2:#153039;
+      --ink:#e7f1f0;
+      --ink-soft:#9fbcc0;
+      --ink-faint:#6f8d92;
+      --accent:#5cd0e0;
+      --accent-ink:#062126;
+      --accent-soft:#153b41;
+      --line:#22454e;
+      --line-strong:#316069;
+      --warn-bg:#3a2415;
+      --warn-ink:#f0b787;
+      --warn-border:#6b4322;
+      --ok-bg:#153a26;
+      --ok-ink:#8fd6a4;
+      --ok-border:#2c6a45;
+      --code-bg:#061218;
+      --code-ink:#bdeef2;
+      --code-accent:#7fe0ec;
+      --code-ph:#ffb877;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b1a20;
+    --surface:#10262e;
+    --surface-2:#153039;
+    --ink:#e7f1f0;
+    --ink-soft:#9fbcc0;
+    --ink-faint:#6f8d92;
+    --accent:#5cd0e0;
+    --accent-ink:#062126;
+    --accent-soft:#153b41;
+    --line:#22454e;
+    --line-strong:#316069;
+    --warn-bg:#3a2415;
+    --warn-ink:#f0b787;
+    --warn-border:#6b4322;
+    --ok-bg:#153a26;
+    --ok-ink:#8fd6a4;
+    --ok-border:#2c6a45;
+    --code-bg:#061218;
+    --code-ink:#bdeef2;
+    --code-accent:#7fe0ec;
+    --code-ph:#ffb877;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.6);
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:16px;
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent-soft); color:var(--ink); }
+
+  .wrap{ max-width:780px; margin:0 auto; padding:28px 20px 96px; }
+
+  /* ===== 머리말 ===== */
+  header.top{
+    display:flex; flex-direction:column; gap:14px;
+    padding-bottom:22px; margin-bottom:30px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--font-mono); font-size:12.5px; letter-spacing:.09em;
+    color:var(--ink-faint); text-transform:uppercase;
+  }
+  .eyebrow svg{ width:16px; height:16px; flex:none; }
+  h1{
+    font-family:var(--font-display); font-weight:700;
+    font-size:clamp(26px,5vw,34px); line-height:1.28; margin:0;
+    text-wrap:balance; color:var(--ink);
+  }
+  .lede{ margin:0; color:var(--ink-soft); font-size:15px; max-width:62ch; }
+  .top-meta{
+    display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;
+  }
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:999px; padding:6px 13px;
+    font-size:13px; color:var(--ink-soft);
+    box-shadow:var(--shadow);
+  }
+  .pill b{ color:var(--ink); font-weight:700; }
+  #progressPill{ border-color:var(--accent); color:var(--accent); font-family:var(--font-mono); }
+  #progressPill b{ color:var(--accent); }
+
+  /* ===== 섹션 공통 ===== */
+  section{ margin-bottom:40px; }
+  h2{
+    font-family:var(--font-display); font-weight:700;
+    font-size:21px; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:baseline; gap:9px;
+  }
+  h2 .h2-no{
+    font-family:var(--font-mono); font-size:13px; color:var(--accent);
+    background:var(--accent-soft); border-radius:6px; padding:2px 8px;
+    letter-spacing:.03em;
+  }
+  p{ margin:0 0 12px; }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow);
+  }
+
+  /* ===== 준비물 ===== */
+  .prep-list{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  .prep-list li{
+    display:grid; grid-template-columns:22px 1fr; gap:10px;
+    align-items:start; font-size:14.5px; color:var(--ink-soft);
+  }
+  .prep-list li b{ color:var(--ink); font-weight:700; }
+  .prep-list svg{ width:18px; height:18px; margin-top:2px; color:var(--accent); flex:none; }
+
+  /* ===== 항로형 단계 목록 ===== */
+  .voyage-wrap{ position:relative; }
+  .voyage-line, .voyage-line-fill{
+    position:absolute; left:19px; top:20px; width:2px;
+    border-radius:2px;
+  }
+  .voyage-line{ bottom:20px; background:var(--line); }
+  .voyage-line-fill{ height:0px; background:var(--accent); transition:height .45s ease; z-index:1; }
+  .voyage{
+    list-style:none; margin:0; padding:0;
+    display:flex; flex-direction:column; gap:34px;
+    position:relative; z-index:2;
+  }
+  .step{ display:grid; grid-template-columns:40px 1fr; gap:18px; }
+  .step-marker{
+    width:40px; height:40px; border-radius:50%;
+    background:var(--bg); border:2px solid var(--line-strong);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:600; font-size:15px;
+    color:var(--ink-soft); transition:.25s;
+  }
+  .step.done .step-marker{
+    background:var(--accent); border-color:var(--accent); color:var(--accent-ink);
+  }
+  .step-body{ min-width:0; padding-top:2px; }
+  .step-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    flex-wrap:wrap; margin-bottom:6px;
+  }
+  .step-head h3{
+    font-family:var(--font-display); font-size:18.5px; font-weight:700;
+    margin:0; color:var(--ink);
+  }
+  .step-tag{
+    font-size:11.5px; font-family:var(--font-mono); color:var(--ink-faint);
+    border:1px solid var(--line); border-radius:999px; padding:2px 9px;
+  }
+  .step-check{
+    display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+    font-size:13px; color:var(--ink-soft); user-select:none; flex:none;
+  }
+  .step-check input{ width:16px; height:16px; accent-color:var(--accent); cursor:pointer; }
+  .step p{ color:var(--ink-soft); font-size:15px; }
+  .step p b{ color:var(--ink); font-weight:700; }
+  .step ol.sub, .step ul.sub{
+    margin:10px 0 12px; padding-left:20px; color:var(--ink-soft); font-size:14.5px;
+  }
+  .step ol.sub li, .step ul.sub li{ margin-bottom:5px; }
+  .step code.inline{
+    font-family:var(--font-mono); font-size:13px; background:var(--surface-2);
+    padding:1px 6px; border-radius:5px; color:var(--ink);
+  }
+
+  /* ===== 터미널(명령어) 블록 ===== */
+  .term{
+    margin:12px 0 14px; border-radius:10px; overflow:hidden;
+    background:var(--code-bg); box-shadow:var(--shadow);
+  }
+  .term-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:7px 12px; background:rgba(255,255,255,.04);
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .term-dots{ display:flex; gap:5px; }
+  .term-dots span{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.18); }
+  .term-label{
+    font-family:var(--font-mono); font-size:11px; color:rgba(205,238,240,.55);
+    letter-spacing:.04em;
+  }
+  .term-copy{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--code-accent);
+    background:transparent; border:1px solid rgba(111,214,214,.35);
+    border-radius:6px; padding:3px 9px; cursor:pointer; transition:.15s;
+  }
+  .term-copy:hover{ background:rgba(111,214,214,.12); }
+  .term-copy.copied{ color:#8fe6b0; border-color:#8fe6b0; }
+  .term pre{
+    margin:0; padding:14px 16px; overflow-x:auto;
+    font-family:var(--font-mono); font-size:13.5px; line-height:1.75;
+    color:var(--code-ink);
+  }
+  .term code .ph{ color:var(--code-ph); font-style:normal; }
+  .term code .cm{ color:rgba(205,238,240,.4); }
+
+  /* ===== 콜아웃 ===== */
+  .callout{
+    display:flex; gap:11px; padding:13px 15px; border-radius:10px;
+    font-size:14px; margin:12px 0; border:1px solid;
+  }
+  .callout svg{ width:19px; height:19px; flex:none; margin-top:1px; }
+  .callout p{ margin:0; }
+  .callout.warn{ background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn-ink); }
+  .callout.ok{ background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok-ink); }
+  .callout b{ font-weight:700; }
+
+  /* ===== 표 ===== */
+  .tblwrap{ overflow-x:auto; border-radius:10px; border:1px solid var(--line); }
+  table{ width:100%; border-collapse:collapse; font-size:14px; background:var(--surface); }
+  th,td{ text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:last-child, td:last-child{ white-space:normal; }
+  thead th{
+    font-family:var(--font-mono); font-size:11.5px; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--ink-faint); background:var(--surface-2);
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.num, th.num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+
+  footer{
+    margin-top:56px; padding-top:22px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--ink-faint); display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  }
+
+  @media (max-width:520px){
+    .step{ grid-template-columns:32px 1fr; gap:12px; }
+    .step-marker{ width:32px; height:32px; font-size:13px; }
+    .voyage-line,.voyage-line-fill{ left:15px; }
+    h1{ font-size:24px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 4.5 0 3-1.2 4.5 0M5 13l1-8h4l2 8M14 13l1-6h3l1.5 6"/></svg>
+      한중 바지선 웨더보드 · 배포 설명서
+    </div>
+    <h1>깃허브에 올리고, 폰·PC로 접속하는 법</h1>
+    <p class="lede">
+      아래 순서를 위에서부터 그대로 따라가면 된다. 한 단계가 끝나면 오른쪽
+      <b>완료</b> 체크를 누르면 되고, 어디까지 했는지는 이 페이지가 기억해 둔다
+      (브라우저를 닫았다 열어도 유지됨).
+    </p>
+    <div class="top-meta">
+      <span class="pill" id="progressPill">완료 0 / 7</span>
+      <span class="pill">예상 소요 시간 <b>약 30분</b></span>
+      <span class="pill">저장소 위치 <b>F:\AI\Weather_gathering\claude-weather</b></span>
+    </div>
+  </header>
+
+  <section id="prep">
+    <h2><span class="h2-no">준비물</span></h2>
+    <div class="card">
+      <ul class="prep-list">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          <span><b>깃허브(GitHub) 계정</b> — 없어도 된다, 1단계에서 같이 만든다.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          <span><b>기상청 API 키</b> — <code class="inline">claude-weather\.env</code> 파일을 메모장으로 열면
+          <code class="inline">KMA_HUB_API_KEY=…</code> 줄에 있다. <code class="inline">=</code> 뒤의 글자만 쓴다.</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          <span><b>인터넷 되는 컴퓨터</b> — 지금 이 화면을 보고 있는 컴퓨터면 된다.</span>
+        </li>
+      </ul>
+      <div class="callout warn" style="margin-top:14px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.7 18a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+        <p><b>이 키는 이 설명서 어디에도 다시 적지 않는다.</b> 4단계에서 딱 한 번,
+        깃허브의 비공개 금고(Secrets)에만 붙여넣는다. 그 값을 코드나 채팅창,
+        메모 파일에는 절대 남기지 않는다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="steps">
+    <h2><span class="h2-no">순서</span> 7단계</h2>
+
+    <div class="voyage-wrap">
+      <div class="voyage-line" id="voyageLine"></div>
+      <div class="voyage-line-fill" id="voyageLineFill"></div>
+
+      <ol class="voyage">
+
+        <li class="step" data-step="1">
+          <div class="step-marker"><span>1</span></div>
+          <div class="step-body">
+            <div class="step-head">
+              <h3>깃허브 계정 만들기</h3>
+              <span class="step-tag">계정 있으면 건너뛰기</span>
+              <label class="step-check"><input type="checkbox" data-step-id="1"><span>완료</span></label>
+            </div>
+            <p><a href="https://github.com" target="_blank" rel="noopener">github.com</a> 접속 →
+            오른쪽 위 <b>Sign up</b> → 이메일·비밀번호·아이디 입력 → 이메일로 온 인증 코드 입력.
+            이 계정이 앞으로 우리 프로그램을 보관하고 자동으로 돌리는 창고 계정이 된다.</p>
+          </div>
+        </li>
+
+        <li class="step" data-step="2">
+          <div class="step-marker"><span>2</span></div>
+          <div class="step-body">
+            <div class="step-head">
+              <h3>저장소(창고) 만들기</h3>
+              <label class="step-check"><input type="checkbox" data-step-id="2"><span>완료</span></label>
+            </div>
+            <p>로그인 후 오른쪽 위 <b>+</b> 버튼 → <b>New repository</b>.</p>
+            <ol class="sub">
+              <li>Repository name: 아무 이름이나 괜찮다. 예 <code class="inline">weather-board</code></li>
+              <li><b>Private</b> 선택 — 소스 코드는 남이 못 보고, 완성된 화면 주소는 그대로 접속된다(7단계).</li>
+              <li>다른 옵션은 그대로 두고 <b>Create repository</b> 클릭.</li>
+            </ol>
+            <p>초록 버튼과 명령어가 잔뜩 적힌 안내 화면이 뜨는데, <b>그대로 두고 다음 단계로 넘어간다.</b>
+            거기 적힌 명령어는 안 써도 된다 — 이미 우리 프로젝트에 파일이 다 있기 때문이다.</p>
+          </div>
+        </li>
+
+        <li class="step" data-step="3">
+          <div class="step-marker"><span>3</span></div>
+          <div class="step-body">
+            <div class="step-head">
+              <h3>내 컴퓨터 파일을 저장소로 올리기</h3>
+              <label class="step-check"><input type="checkbox" data-step-id="3"><span>완료</span></label>
+            </div>
+            <p>시작 메뉴에서 <code class="inline">cmd</code> 검색 → <b>명령 프롬프트</b> 실행.
+            아래 세 줄을 <b>한 줄씩</b> 붙여넣고 Enter.
+            <span class="ph" style="color:var(--code-ph)">&lt;내 계정 이름&gt;</span>과
+            <span class="ph" style="color:var(--code-ph)">&lt;저장소 이름&gt;</span>은
+            2단계에서 정한 실제 값으로 바꿔 넣는다.</p>
+
+            <div class="term">
+              <div class="term-bar">
+                <span class="term-dots"><span></span><span></span><span></span></span>
+                <span class="term-label">명령 프롬프트</span>
+                <button class="term-copy" type="button">복사</button>
+              </div>
+              <pre><code>cd F:\AI\Weather_gathering\claude-weather
+git remote add origin https://github.com/<span class="ph">&lt;내 계정 이름&gt;</span>/<span class="ph">&lt;저장소 이름&gt;</span>.git
+git push -u origin main</code></pre>
+            </div>
+
+            <p>마지막 줄에서 브라우저 로그인 창이 뜨면 깃허브 계정으로 로그인해서 허가해 준다.
+            창이 안 뜨고 멈춰 있으면 작업 표시줄에 새로 뜬 브라우저 창을 확인해라.</p>
+            <div class="callout ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+              <p><b>확인 방법</b>: 저장소 페이지를 새로고침해서 <code class="inline">README.md</code>,
+              <code class="inline">src</code>, <code class="inline">web</code> 폴더가 보이면 성공이다.</p>
+            </div>
+          </div>
+        </li>
+
+        <li class="step" data-step="4">
+          <div class="step-marker"><span>4</span></div>
+          <div class="step-body">
+            <div class="step-head">
+              <h3>기상청 키를 금고에 넣기</h3>
+              <label class="step-check"><input type="checkbox" data-step-id="4"><span>완료</span></label>
+            </div>
+            <p>저장소 화면에서 <b>Settings</b> 탭 → 왼쪽 메뉴 <b>Secrets and variables</b> →
+            <b>Actions</b> → <b>New repository secret</b>.</p>
+            <ol class="sub">
+              <li>Name 칸에 정확히 <code class="inline">KMA_HUB_API_KEY</code> (대소문자·밑줄까지 그대로)</li>
+              <li>Secret 칸에 <code class="inline">.env</code> 파일에서 복사한 키 값 붙여넣기 (앞뒤 공백 없이)</li>
+              <li><b>Add secret</b> 클릭</li>
+            </ol>
+            <div class="callout ok">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+              <p>여기 넣은 값은 <b>깃허브 화면에서도 다시 볼 수 없다.</b> 자동 실행 로그에도
+              <code class="inline">***</code> 로 가려져 나온다. 틀렸으면 같은 이름으로 새로 만들어 덮어쓰면 된다.</p>
+            </div>
+          </div>
+        </li>
+
+        <li class="step" data-step="5">
+          <div class="step-marker"><span>5</span></div>
+          <div class="step-body">
+            <div class="step-head">
+              <h3>자동 실행 방식 켜기</h3>
+              <label class="step-check"><input type="checkbox" data-step-id="5"><span>완료</span></label>
+            </div>
+            <p><b>Settings</b> → 왼쪽 메뉴 <b>Pages</b> → <b>Build and deployment</b> 항목의
+            <b>Source</b> 드롭다운을 <b>GitHub Actions</b> 로 바꾼다.</p>
+            <div class="callout warn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.7 18a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+              <p><b>기본값인 "Deploy from a branch" 로 남겨 두면 화면이 영영 안 뜬다.</b>
+              꼭 "GitHub Actions" 로 바꿔야 한다.</p>
+            </div>
+          </div>
+        </li>
+
+        <li class="step" data-step="6">
+          <div class="step-marker"><span>6</span></div>
+          <div class="step-body">
+            <div class="step-head">
+              <h3>처음 한 번 손으로 실행해 보기</h3>
+              <label class="step-check"><input type="checkbox" data-step-id="6"><span>완료</span></label>
+            </div>
+            <p><b>Actions</b> 탭 → 왼쪽 목록의 <b>기상자료 수집</b> 클릭 →
+            오른쪽 <b>Run workflow</b> 버튼 → 다시 뜨는 초록 <b>Run workflow</b> 버튼 클릭.</p>
+            <p>5~8분 걸린다. 목록의 동그라미가 노란색(진행 중) → 초록 체크(성공)로
+            바뀌면 끝이다. <b>빨간 X</b> 가 뜨면 아래 8절 문제 해결을 봐라.</p>
+            <p style="font-size:13.5px;color:var(--ink-faint)">
+            처음 실행이라 데이터베이스가 비어 있는 상태에서 시작한다.
+            5~8분짜리 실행이 끝나면 15개 지점의 10일치 예보가 다 채워진다.</p>
+          </div>
+        </li>
+
+        <li class="step" data-step="7">
+          <div class="step-marker"><span>7</span></div>
+          <div class="step-body">
+            <div class="step-head">
+              <h3>접속 주소 확인하고 폰에 추가하기</h3>
+              <label class="step-check"><input type="checkbox" data-step-id="7"><span>완료</span></label>
+            </div>
+            <p>주소 형식은 다음과 같다. <b>Settings → Pages</b> 화면 위쪽에도 실제 주소가 나온다.</p>
+            <div class="term">
+              <div class="term-bar">
+                <span class="term-dots"><span></span><span></span><span></span></span>
+                <span class="term-label">접속 주소</span>
+                <button class="term-copy" type="button">복사</button>
+              </div>
+              <pre><code>https://<span class="ph">&lt;내 계정 이름&gt;</span>.github.io/<span class="ph">&lt;저장소 이름&gt;</span>/</code></pre>
+            </div>
+            <ol class="sub">
+              <li><b>PC</b> — 주소창에 입력 후 <code class="inline">Ctrl+D</code> 로 즐겨찾기</li>
+              <li><b>아이폰(사파리)</b> — 공유 아이콘 탭 → <b>홈 화면에 추가</b></li>
+              <li><b>안드로이드(크롬)</b> — 오른쪽 위 점 3개 → <b>홈 화면에 추가</b> / <b>앱 설치</b></li>
+            </ol>
+            <p>홈 화면에 추가하면 브라우저 주소창 없이 앱처럼 아이콘만 눌러서 바로 열린다
+            (화면에 이미 전용 아이콘이 설정돼 있다).</p>
+          </div>
+        </li>
+
+      </ol>
+    </div>
+  </section>
+
+  <section id="schedule">
+    <h2><span class="h2-no">그 뒤</span> 자동 갱신 시간표</h2>
+    <p style="color:var(--ink-soft);font-size:14.5px">
+      6단계 이후로는 <b>내 컴퓨터가 꺼져 있어도</b> 깃허브가 하루 4번 알아서 새 예보를 받아 화면을 갱신한다.</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>한국시간</th><th>받아오는 모델 자료</th></tr></thead>
+        <tbody>
+          <tr><td class="num">05:15</td><td>전날 18 UTC 모델 자료</td></tr>
+          <tr><td class="num">09:15</td><td>전날 18 UTC 모델 자료 (재확인)</td></tr>
+          <tr><td class="num">17:15</td><td>당일 00 UTC 모델 자료</td></tr>
+          <tr><td class="num">21:15</td><td>당일 06 UTC 모델 자료</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="trouble">
+    <h2><span class="h2-no">8</span> 문제가 생겼을 때</h2>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>증상</th><th>확인 / 해결</th></tr></thead>
+        <tbody>
+          <tr><td>Actions 탭에 빨간 X</td><td>그 실행을 클릭 → 아래로 펼쳐지는 로그 확인. 거의 대부분
+          <code class="inline">KMA_HUB_API_KEY</code> 오타나 앞뒤 공백이 원인이다 → 4단계를 다시 확인</td></tr>
+          <tr><td>주소 접속 시 화면이 안 뜸(404)</td><td>Settings → Pages → Source가 <code class="inline">GitHub Actions</code>
+          인지 재확인. 아직 한 번도 성공 실행이 없으면 6단계부터 다시</td></tr>
+          <tr><td><code class="inline">git push</code> 시 "Authentication failed"</td><td>브라우저 로그인 창이 새로 떴는지 작업 표시줄 확인.
+          안 뜨면 <code class="inline">github.com</code> 에 먼저 로그인해 둔 뒤 다시 실행</td></tr>
+          <tr><td><code class="inline">git push</code> 시 "remote origin already exists"</td><td>
+          <code class="inline">git remote remove origin</code> 실행한 뒤 3단계 다시</td></tr>
+          <tr><td>매번 손으로 눌러야 갱신되는 것 같음</td><td>정상은 자동이다. 위 시간표 시각을 하루 지나서
+          Actions 탭에 초록 체크가 새로 쌓이는지 확인해라</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn" style="margin-top:14px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9L2.7 18a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+      <p>지금 <code class="inline">data\weather.db</code> 에 이미 모아 둔 자료(약 335 KB)는
+      이 절차로는 안 딸려 올라간다. 첫 실행은 빈 상태에서 시작한다.
+      그 파일을 이어서 쓰고 싶으면 따로 알려주면 옮기는 법을 알려주겠다.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>더 자세한 배경(자료 출처, 라이선스, 다른 배포 방법)은 저장소의
+    <code class="inline">README.md</code> 9절에 있다.</span>
+    <span>저장소 현재 상태: 커밋 2개 준비됨 · <code class="inline">.env</code>는 올라가지 않음</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var STORAGE_KEY = "weatherboard-deploy-guide-v1";
+
+  function loadState(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveState(state){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ /* 개인정보 보호 모드 등에서는 그냥 저장 안 됨 - 무시 */ }
+  }
+
+  function updateProgress(){
+    var boxes = document.querySelectorAll(".step-check input[type=checkbox]");
+    var total = boxes.length, done = 0;
+    boxes.forEach(function(b){
+      var step = b.closest(".step");
+      if (step) step.classList.toggle("done", b.checked);
+      if (b.checked) done++;
+    });
+    var pill = document.getElementById("progressPill");
+    if (pill) pill.textContent = "완료 " + done + " / " + total;
+
+    var line = document.getElementById("voyageLine");
+    var fill = document.getElementById("voyageLineFill");
+    if (line && fill) {
+      var h = line.offsetHeight;
+      fill.style.height = (total ? Math.round(h * done / total) : 0) + "px";
+    }
+  }
+
+  function initSteps(){
+    var state = loadState();
+    document.querySelectorAll(".step-check input[type=checkbox]").forEach(function(cb){
+      var id = cb.getAttribute("data-step-id");
+      if (state[id]) cb.checked = true;
+      cb.addEventListener("change", function(){
+        var s = loadState();
+        s[id] = cb.checked;
+        saveState(s);
+        updateProgress();
+      });
+    });
+    updateProgress();
+  }
+
+  function bindCopy(){
+    document.querySelectorAll(".term").forEach(function(term){
+      var btn = term.querySelector(".term-copy");
+      var code = term.querySelector("code");
+      if (!btn || !code) return;
+      btn.addEventListener("click", function(){
+        var text = code.textContent;
+        function done(){
+          var old = btn.textContent;
+          btn.textContent = "복사됨";
+          btn.classList.add("copied");
+          setTimeout(function(){ btn.textContent = old; btn.classList.remove("copied"); }, 1400);
+        }
+        function fallback(){
+          try {
+            var ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            done();
+          } catch (e2) { /* 복사 실패 시 조용히 무시 - 사용자가 직접 긁으면 됨 */ }
+        }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, fallback);
+          } else {
+            fallback();
+          }
+        } catch (e) { fallback(); }
+      });
+    });
+  }
+
+  function debounce(fn, ms){
+    var t;
+    return function(){
+      clearTimeout(t);
+      var args = arguments, ctx = this;
+      t = setTimeout(function(){ fn.apply(ctx, args); }, ms);
+    };
+  }
+
+  window.addEventListener("DOMContentLoaded", function(){
+    initSteps();
+    bindCopy();
+    window.addEventListener("resize", debounce(updateProgress, 150));
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(updateProgress);
+    }
+  });
+})();
+</script>
