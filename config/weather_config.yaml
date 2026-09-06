@@ -320,7 +320,7 @@ locations:
 routes:
   R1:
     short: "영성"
-    name: "고현항 → 영성 묘박지 → 영성(법인·가야)"
+    name: "고현항 ↔ 영성(법인·가야)"
     # 고현항 → 거제 동방 → 여수 남방 → 진도 남방 → 흑산도 북방
     #        → 서해 남부 먼바다 → 스다오 동방 → 영성 묘박지
     endpoints: [GOHYEON, LIDAO_ANCH]
@@ -330,7 +330,7 @@ routes:
 
   R3:
     short: "CSME"
-    name: "고현항 → 난퉁 묘박지 → 난퉁 CSME"
+    name: "고현항 ↔ 난퉁(CSME)"
     # 고현항 → 거제 동방 → 여수 남방 → 제주해협 → 이어도 북동방
     #        → 난퉁 동방 → 난퉁 묘박지 → 난퉁 CSME
     endpoints: [GOHYEON, NANTONG_ANCH]
