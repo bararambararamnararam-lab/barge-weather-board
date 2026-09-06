@@ -521,23 +521,29 @@
         line.appendChild(el("span", "eta-name",
           name + " (" + t.nm.toFixed(0) + "해리)"));
 
+        /* 선종마다 한 줄. 폰 폭에 들어가도록 글을 짧게 쓴다.
+           "89시간 (3일 17시간) · 9/10(목) 17시 도착" -> "3일 17h · 9/10(목) 17시" */
         t.runs.forEach(function (r) {
           var sp = el("span", "eta-vessel");
-          sp.appendChild(document.createTextNode(r.vessel.short + " "));
+          sp.appendChild(el("span", "eta-ship", r.vessel.short));
+
+          var val = el("span");
           if (!r.result) {
-            sp.appendChild(el("b", "eta-none", "예보 기간 내 불가"));
+            val.appendChild(el("b", "eta-none", "예보 기간 내 불가"));
           } else {
             var h = r.result.hours;
-            var txt = h + "시간";
-            if (h >= 24) txt += " (" + Math.floor(h / 24) + "일 " + (h % 24) + "시간)";
-            sp.appendChild(el("b", null, txt));
-            sp.appendChild(document.createTextNode(
-              " · " + arriveText(state.timeIndex, h) + " 도착"));
+            var txt = h >= 24
+              ? (Math.floor(h / 24) + "일 " + (h % 24) + "시간")
+              : (h + "시간");
+            val.appendChild(el("b", null, txt));
+            val.appendChild(document.createTextNode(
+              " · " + arriveText(state.timeIndex, h)));
             if (r.result.wait > 0) {
-              sp.appendChild(document.createTextNode(" · "));
-              sp.appendChild(el("b", "eta-wait", "대기 " + r.result.wait + "시간"));
+              val.appendChild(document.createTextNode(" · "));
+              val.appendChild(el("b", "eta-wait", "대기 " + r.result.wait + "시간"));
             }
           }
+          sp.appendChild(val);
           line.appendChild(sp);
         });
         list.appendChild(line);

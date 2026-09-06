@@ -83,9 +83,12 @@ html, body {
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
 .timebar {
-  position: fixed; left: 0; right: 0; bottom: var(--tab-h); z-index: 30;
+  position: fixed; left: 0; right: 0; z-index: 30;
+  /* 탭바는 아래쪽 안전영역(아이폰 홈 막대 자리)만큼 더 높다.
+     그걸 빼먹으면 시간 막대가 탭 위로 파고들어 겹친다. */
+  bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
   display: flex; align-items: center; gap: 6px;
-  padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px) * 0);
+  padding: 6px 10px;
   background: var(--card); border-top: 1px solid var(--line);
 }
 .timebox { flex: 1; min-width: 0; }
@@ -129,6 +132,13 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
   padding: calc(var(--top-h) + 6px) 10px
            calc(calc(var(--tab-h) + var(--timebar-h)) + env(safe-area-inset-bottom) + 12px);
   max-width: 1400px; margin: 0 auto;
+  /* 내용이 짧아도 화면 한 판은 채운다.
+     시각을 옮길 때마다 내용 길이가 달라지는데, 그때 페이지 높이가
+     스크롤이 생겼다 없어졌다 하는 경계를 넘나들면 폰 브라우저가
+     주소창을 숨겼다 보였다 하면서 아래 막대까지 흔들린다. */
+  min-height: 100vh;
+  /* 내용이 바뀔 때 브라우저가 스크롤 위치를 멋대로 붙잡지 않게. */
+  overflow-anchor: none;
 }
 /* hidden 속성은 어떤 클래스보다 세다.
    (예전에 .desktop-only { display:block } 이 hidden 을 이겨서
@@ -317,13 +327,20 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
   font-size: 12px; font-weight: 700; color: var(--ink);
   padding-top: 2px; white-space: nowrap;
 }
-.eta-targets { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.eta-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
-.eta-name { font-size: 13px; font-weight: 700; flex: 0 0 auto; }
+.eta-targets { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+/* 목적지 한 줄, 그 아래 선종 한 줄씩.
+   예전에는 한 줄에 다 밀어 넣고 nowrap 을 걸어서 폰에서 글자가
+   화면 밖으로 삐져나갔다. */
+.eta-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.eta-name { font-size: 13px; font-weight: 700; }
 .eta-vessel {
+  display: grid; grid-template-columns: 44px 1fr; gap: 6px;
   font-size: 12px; color: var(--ink-dim);
-  font-variant-numeric: tabular-nums; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  white-space: normal; word-break: keep-all; line-height: 1.5;
 }
+.eta-ship { font-weight: 700; color: var(--ink-dim); }
 .eta-vessel b { color: var(--ink); font-weight: 700; }
 .eta-wait { color: var(--warn-ink); font-weight: 700; }
 .eta-none { color: var(--bad-ink); font-weight: 700; }
