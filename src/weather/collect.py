@@ -40,7 +40,27 @@ def _stamp(moment: datetime) -> str:
     return moment.strftime("%Y-%m-%dT%H:%M")
 
 
-def collect_forecast(config: Config, verbose: bool = True) -> dict[str, Any]:
+def export_web_files(config: Config, verbose: bool = True) -> None:
+    """웹 화면이 읽을 JSON 을 다시 만든다.
+
+    ★ 반드시 예보와 특보를 '둘 다' 저장한 뒤에 불러야 한다.
+      예전에는 예보 수집이 끝나자마자 여기를 불렀는데, 특보는 그 다음에
+      수집되기 때문에 warnings.json 이 늘 비어 있었다.
+      (실제로 배포된 화면에서 특보가 하나도 안 뜨는 문제가 났다.)
+
+    여기서 실패해도 수집 자체는 성공으로 둔다. 자료는 이미 DB 에 들어갔고,
+    JSON 은 5_웹자료_다시만들기.bat 으로 언제든 다시 만들 수 있다.
+    """
+    try:
+        from .export_web import export as export_web
+        export_web(config, verbose=verbose)
+    except Exception as exc:
+        if verbose:
+            print("[웹] JSON 내보내기 실패(수집은 정상): {}".format(exc))
+
+
+def collect_forecast(config: Config, verbose: bool = True,
+                     export: bool = True) -> dict[str, Any]:
     """예보와 현재값을 수집해 저장한다."""
     started = _now(config)
     result: dict[str, Any] = {
@@ -126,14 +146,12 @@ def collect_forecast(config: Config, verbose: bool = True) -> dict[str, Any]:
             for message in source_warnings:
                 print("[예보] 경고: {}".format(message))
 
-        # 웹 화면이 읽을 JSON 을 다시 만든다.
-        # 여기서 실패해도 수집 자체는 성공으로 둔다(자료는 이미 DB 에 들어갔다).
-        try:
-            from .export_web import export as export_web
-            export_web(config, verbose=verbose)
-        except Exception as exc:
-            if verbose:
-                print("[웹] JSON 내보내기 실패(수집은 정상): {}".format(exc))
+        # 웹 화면용 JSON.
+        # 예보만 따로 수집할 때는 여기서 만든다.
+        # 예보+특보를 같이 수집할 때(collect_all)는 특보까지 끝난 뒤에
+        # 한 번만 만들도록 export=False 로 넘어온다.
+        if export:
+            export_web_files(config, verbose=verbose)
 
         # 지도 격자(해역 색칠).
         # 새 ECMWF 사이클을 받았을 때만 다시 만든다.
@@ -190,7 +208,8 @@ def _maybe_vacuum(config: Config, verbose: bool = True) -> None:
         print("[정리] 파일 공간 회수: {} MB -> {} MB".format(before, after))
 
 
-def collect_warning(config: Config, verbose: bool = True) -> dict[str, Any]:
+def collect_warning(config: Config, verbose: bool = True,
+                    export: bool = True) -> dict[str, Any]:
     """기상청 특보 현황을 수집해 저장한다."""
     started = _now(config)
     result: dict[str, Any] = {
@@ -207,6 +226,8 @@ def collect_warning(config: Config, verbose: bool = True) -> dict[str, Any]:
         result["error"] = message
         if verbose:
             print("[특보] {}".format(message))
+        if export:
+            export_web_files(config, verbose=verbose)
         return result
 
     if verbose:
@@ -247,14 +268,22 @@ def collect_warning(config: Config, verbose: bool = True) -> dict[str, Any]:
         except Exception:
             pass
 
+    # 특보까지 DB 에 들어간 뒤에 화면용 JSON 을 만든다.
+    if export:
+        export_web_files(config, verbose=verbose)
+
     return result
 
 
 def collect_all(config: Config | None = None, verbose: bool = True) -> dict[str, Any]:
     """예보와 특보를 모두 수집한다."""
     cfg = config or load_config()
-    forecast_result = collect_forecast(cfg, verbose)
-    warning_result = collect_warning(cfg, verbose)
+    # 화면용 JSON 은 둘 다 끝난 뒤에 한 번만 만든다(export=False).
+    # 예보 직후에 만들면 그 시점엔 특보가 아직 DB 에 없어서
+    # warnings.json 이 빈 채로 배포된다.
+    forecast_result = collect_forecast(cfg, verbose, export=False)
+    warning_result = collect_warning(cfg, verbose, export=False)
+    export_web_files(cfg, verbose=verbose)
     if verbose:
         print("[완료] 데이터베이스 파일: {} ({} MB)".format(DB_PATH, database_size_mb()))
     return {"forecast": forecast_result, "warning": warning_result}
