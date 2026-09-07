@@ -247,6 +247,34 @@
     return box;
   }
 
+  /* ---------------------------------------------------------------- 밝기
+     시스템 설정만 따르던 것을 손으로도 고를 수 있게 한다.
+     고른 값은 그 기기에만 기억된다(localStorage). */
+
+  function currentTheme() {
+    return document.documentElement.getAttribute("data-theme") === "light"
+      ? "light" : "dark";
+  }
+
+  function applyTheme(mode) {
+    document.documentElement.setAttribute("data-theme", mode);
+    try { localStorage.setItem("theme", mode); } catch (e) { /* 사생활 보호 모드 */ }
+
+    var btn = $("themeBtn");
+    if (btn) {
+      /* 지금 상태가 아니라 '누르면 어떻게 되는지' 를 보여 준다. */
+      btn.textContent = (mode === "dark") ? "☀" : "☾";
+      btn.title = (mode === "dark") ? "밝은 화면으로" : "어두운 화면으로";
+      btn.setAttribute("aria-label", btn.title);
+    }
+    /* 폰 위쪽 상태 막대 색도 맞춘다. */
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", mode === "dark" ? "#0f172a" : "#f4f6f8");
+
+    /* 지도는 색을 스스로 다시 칠하지 않으므로 다시 그려 준다. */
+    if (map && state.view === "map") renderMap();
+  }
+
   // ---------------------------------------------------------------- 자료 읽기
   function load() {
     var bust = "?t=" + Date.now();
@@ -1389,6 +1417,9 @@
         else map.removeLayer(gridLayer);
       }
     };
+    $("themeBtn").onclick = function () {
+      applyTheme(currentTheme() === "dark" ? "light" : "dark");
+    };
     $("reloadBtn").onclick = function () {
       $("loading").classList.remove("done");
       $("loading").textContent = "불러오는 중…";
@@ -1405,6 +1436,7 @@
 
   load().then(function () {
     wire();
+    applyTheme(currentTheme());   /* 단추 아이콘을 지금 상태에 맞춘다 */
     renderAll();
     show("summary");
     $("loading").classList.add("done");

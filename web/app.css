@@ -25,8 +25,13 @@
   --radius: 12px;
 }
 
+/* 어두운 화면 색.
+   두 군데에서 같은 값을 쓴다.
+     1) 시스템이 어두운 모드일 때 — 단, 사용자가 '밝게' 를 골랐으면 제외
+     2) 사용자가 '어둡게' 를 직접 골랐을 때
+   이렇게 해 두면 시스템 설정과 사용자 선택이 서로 싸우지 않는다. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f172a;
     --card: #182338;
     --ink: #e8eef6;
@@ -40,6 +45,21 @@
     --bad-bg: #40191a;   --bad-ink: #ff9c94;
     --none-bg: #232f42;  --none-ink: #93a1b3;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f172a;
+  --card: #182338;
+  --ink: #e8eef6;
+  --ink-dim: #94a5b8;
+  --line: #2b3a52;
+  --accent: #5b8def;
+  --accent-ink: #0b1220;
+
+  --ok-bg: #16351f;    --ok-ink: #7fe09b;
+  --warn-bg: #3a2f10;  --warn-ink: #ffd569;
+  --bad-bg: #40191a;   --bad-ink: #ff9c94;
+  --none-bg: #232f42;  --none-ink: #93a1b3;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
