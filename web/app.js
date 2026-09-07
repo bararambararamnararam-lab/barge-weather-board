@@ -17,6 +17,7 @@
   var gridLayer = null, gridCells = [], gridOn = true;
   var state = {
     route: null,
+    way: "out",          /* out=가는 길, back=오는 길 */
     timeIndex: 0,
     view: "summary",
     metric: "judge",
@@ -91,6 +92,40 @@
   }
   function series(locId) { return FC.series[locId] || null; }
 
+  /* 그 지점의 판정. 가는 길과 오는 길이 다르다.
+
+     파도를 어느 쪽에서 맞느냐가 방향에 따라 정반대가 되기 때문이다.
+     (여수 남방은 갈 때 등파인 시각이 올 때는 맞파가 된다)
+     파이썬이 두 벌을 미리 계산해 보내 준다. */
+  function stOf(locId, idx) {
+    var s = series(locId);
+    if (!s) return "x";
+    var arr = (state.way === "back" && s.st_back) ? s.st_back : s.st;
+    return arr ? arr[idx] : "x";
+  }
+
+  /* 접안·하역을 할 수 있는 상태인지. 항만·터미널에서만 값이 있다.
+     ★ 색(운항 판단)과 섞지 않는다. 색은 "거기까지 갈 수 있나" 이고
+       이건 "가서 짐을 내릴 수 있나" 라 다른 이야기다. */
+  function berthOf(locId, idx) {
+    var s = series(locId);
+    if (!s || !s.berth) return null;
+    return s.berth[idx] || null;
+  }
+
+  /* 파도를 어느 쪽에서 맞는지. 소요 시간 계산에 쓴다. */
+  function waveSideAt(locId, idx) {
+    var route = routeObj();
+    var course = (route.courses || {})[locId];
+    var s = series(locId);
+    if (course === undefined || !s || !s.vdir) return "head";
+    var wd = s.vdir[idx];
+    if (wd === null || wd === undefined) return "head";
+    if (state.way === "back") course = (course + 180) % 360;
+    var rel = Math.abs(((wd - course + 180) % 360 + 360) % 360 - 180);
+    return rel < 60 ? "head" : (rel < 120 ? "beam" : "following");
+  }
+
   /* 그 시각에 실제로 걸려 있는 특보만 고른다.
 
      특보에는 발효 시각(from)과 해제 예정 시각(until)이 들어 있다.
@@ -122,7 +157,7 @@
     if (!s) { out.push({ head: loc ? loc.name : locId }); return out; }
 
     out.push({ head: loc.name + " / " + fmtTime(FC.times[idx]) });
-    out.push({ head: "판정: ", value: META.status_labels[s.st[idx]] });
+    out.push({ head: "판정: ", value: META.status_labels[stOf(locId, idx)] });
 
     /* 자료원이 ECMWF+NOAA 로 바뀌면서 뇌우·해류·수온은 받지 않는다. */
     var order = ["wind", "gust", "wave", "vis", "prec", "vper"];
@@ -204,7 +239,7 @@
       return box;
     }
 
-    var st = s.st[idx];
+    var st = stOf(locId, idx);
     box.appendChild(el("div", "wx-verdict s-" + st, META.status_labels[st]));
 
     /* 값 넷만. 기준은 빼고 값 자체에 색으로 상태를 담는다. */
@@ -225,6 +260,12 @@
         rows.appendChild(vv);
       });
     box.appendChild(rows);
+
+    var bth = berthOf(locId, idx);
+    if (bth && bth !== "n") {
+      box.appendChild(el("div", "wx-berth s-" + bth,
+        bth === "u" ? "하역 불가 (접안 기준)" : "하역 주의 (접안 기준)"));
+    }
 
     var ws = warningsAt(locId, idx);
     if (ws.length) {
@@ -332,6 +373,31 @@
     $("appTitle").textContent = routeObj().name;
   }
 
+  /* 방향 단추. 가는 길과 오는 길은 파도를 맞는 쪽이 정반대라
+     판정도 소요 시간도 달라진다. */
+  function renderWayChips() {
+    var box = $("wayChips");
+    if (!box) return;
+    box.innerHTML = "";
+    var route = routeObj();
+    var main = route.main || route.locations || [];
+    var startName = main.length && META.locations[main[0]]
+      ? tailName(main[0]) : "출발지";
+    var endName = (route.short || "도착지");
+
+    [["out", startName + " → " + endName],
+     ["back", endName + " → " + startName]].forEach(function (p) {
+      var b = el("button", "chip way" + (state.way === p[0] ? " on" : ""), p[1]);
+      b.type = "button";
+      b.onclick = function () {
+        state.way = p[0];
+        mapFitted = false;
+        renderAll();
+      };
+      box.appendChild(b);
+    });
+  }
+
   function renderTimeBar() {
     var r = $("timeRange");
     r.max = String(FC.times.length - 1);
@@ -352,7 +418,7 @@
 
     route.locations.forEach(function (locId, i) {
       var s = series(locId), loc = META.locations[locId];
-      var st = s ? s.st[idx] : "x";
+      var st = stOf(locId, idx);
       counts[st]++;
       if (rank[st] > worstRank) { worstRank = rank[st]; worst = loc.name; }
 
@@ -377,6 +443,15 @@
         if (ws.length > 1) wtext += "+" + (ws.length - 1);
         top.appendChild(el("div",
           "card-warn " + (worstW.lvl === "경보" ? "s-u" : "s-c"), wtext));
+      }
+
+      /* 항만·터미널이면 하역 가능 여부를 따로 붙인다.
+         색(운항 판단)과 섞지 않는다. 색은 "거기까지 갈 수 있나" 이고
+         이건 "가서 짐을 내릴 수 있나" 라 다른 이야기다. */
+      var bth = berthOf(locId, idx);
+      if (bth && bth !== "n") {
+        top.appendChild(el("div", "card-berth s-" + bth,
+          bth === "u" ? "하역불가" : "하역주의"));
       }
 
       top.appendChild(el("div", "card-badge s-" + st, META.status_labels[st]));
@@ -418,8 +493,7 @@
        칸 번호는 카드 목록·지도의 번호와 같고, 누르면 그 지점으로 들어간다. */
     var signals = el("div", "signals");
     route.locations.forEach(function (locId, i) {
-      var s = series(locId);
-      var st = s ? s.st[idx] : "x";
+      var st = stOf(locId, idx);
       var b = el("button", "signal s-" + st, String(i + 1));
       b.type = "button";
       b.title = META.locations[locId].name + " — " + META.status_labels[st];
@@ -502,9 +576,8 @@
   function legStatus(leg, idx) {
     var worst = null;
     [leg.from, leg.to].forEach(function (id) {
-      var ss = series(id);
-      if (!ss || !ss.st) return;
-      var st = ss.st[idx];
+      if (!series(id)) return;
+      var st = stOf(id, idx);          /* 고른 방향의 판정을 쓴다 */
       if (!st || st === "x") return;
       if (worst === null || RANK[st] > RANK[worst]) worst = st;
     });
@@ -516,6 +589,28 @@
        hours  : 총 소요 시간
        wait   : 그중 기상 때문에 멈춰 있던 시간
        beyond : 예보 기간을 넘어선 채로 계산했는지 */
+  /* 그 구간에서 파도 방향 때문에 속도가 얼마나 달라지는지. */
+  function dirSpeedFactor(leg, idx) {
+    var wd = (META.wave_direction || {});
+    var ks = wd.speed_k;
+    if (!ks) return 1;
+
+    /* 구간의 두 끝 중 기상 자료가 있는 쪽을 쓴다.
+       (길 꺾는 점은 기상을 안 받는다) */
+    var lid = series(leg.to) ? leg.to : (series(leg.from) ? leg.from : null);
+    if (!lid) return 1;
+    var s = series(lid);
+    var hs = (s.wave && s.wave[idx] !== null && s.wave[idx] !== undefined)
+      ? s.wave[idx] : 0;
+    if (!hs) return 1;
+
+    var k = ks[waveSideAt(lid, idx)];
+    if (k === undefined) return 1;
+    var f = 1 - k * (hs / 2.0);
+    /* 터무니없는 값이 되지 않게 막아 둔다. */
+    return Math.max(0.5, Math.min(1.25, f));
+  }
+
   function runLegs(legs, startIdx, speedKn) {
     var v = META.voyage || {};
     var cautionF = (v.caution_factor === undefined) ? 0.75 : v.caution_factor;
@@ -542,7 +637,19 @@
           }
           f = cautionF;      /* 기상을 무시하고 통과하는 설정 */
         }
-        left -= speedKn * f;   /* 한 시간 전진 */
+        /* 파도를 어느 쪽에서 맞느냐에 따라 속도가 달라진다.
+
+           ★ 위험한 순서와 느린 순서가 다르다.
+             횡파는 롤링이 심해 가장 위험하지만 속도는 별로 안 준다.
+             맞파는 가장 느리지만 횡파보다 안전하다.
+             그래서 안전 계수(파고 한계)와 속도 계수를 따로 둔다.
+
+           속도계수 = 1 - k x (파고 / 2.0)
+             맞파 k=0.10   횡파 k=0.02   등파 k=-0.05(빨라짐)
+
+           한국선급 부가저항표와 풍압저항으로 푼 값에 맞춘 것이다.
+           파고 2 m 에서 맞파 -10%, 등파 +5% 가 나온다. */
+        left -= speedKn * f * dirSpeedFactor(legs[i], idx);
         hours += 1;
         if (++guard > 1000) return null;
       }
@@ -847,7 +954,7 @@
 
       var st, main, sub = "", factors = null;
       if (m.kind === "judge") {
-        st = s.st[i];
+        st = stOf(locId, i);
         main = META.status_labels[st];
         /* 판정 근거를 전부 보여 준다.
            예전에는 풍속·파고 둘만 적었는데, 그 둘이 멀쩡한데 '조건' 이
@@ -862,6 +969,11 @@
             chip.textContent = p[1] + " " + (v === null ? "—" : num(v));
             factors.appendChild(chip);
           });
+        var bthRow = berthOf(locId, i);
+        if (bthRow && bthRow !== "n") {
+          factors.appendChild(el("span", "tfac s-" + bthRow,
+            bthRow === "u" ? "하역불가" : "하역주의"));
+        }
         var wsRow = warningsAt(locId, i);
         if (wsRow.length) {
           var worstW = wsRow[0];
@@ -983,7 +1095,7 @@
       cols.forEach(function (i) {
         var st, text;
         if (m.kind === "judge") {
-          st = s ? s.st[i] : "x";
+          st = stOf(locId, i);
           text = META.status_labels[st];
         } else {
           var v = s && s[m.key] ? s[m.key][i] : null;
@@ -1056,8 +1168,20 @@
       table.appendChild(val);
     });
     box.appendChild(table);
-    /* 설명 문단은 넣지 않는다. 좁은 화면에서 자리만 차지했다.
-       (다시 넣고 싶으면 여기에 legend-note 를 붙이면 된다) */
+
+    /* 파향 계수는 짧게 한 줄만. 파고 기준이 방향에 따라 달라지는 것을
+       모르면 "왜 같은 파고인데 색이 다르지" 하고 헷갈린다. */
+    var wd = (META.wave_direction || {}).safety_factor;
+    var wave = META.thresholds.wave;
+    if (wd && wave && wave.unavailable_at) {
+      var u = wave.unavailable_at;
+      box.appendChild(el("p", "legend-note",
+        "파고 기준은 파도를 맞는 쪽에 따라 달라집니다 — "
+        + "맞파 " + (u * (wd.head || 1)).toFixed(2) + "m · "
+        + "옆파 " + (u * (wd.beam || 1)).toFixed(2) + "m · "
+        + "등파 " + (u * (wd.following || 1)).toFixed(2) + "m 에서 불가. "
+        + "옆에서 맞으면 흔들림이 커 가장 엄격합니다."));
+    }
   }
 
   // ---------------------------------------------------------------- 지도
@@ -1223,7 +1347,7 @@
 
     route.locations.forEach(function (locId, i) {
       var loc = META.locations[locId], s = series(locId);
-      var st = s ? s.st[idx] : "x";
+      var st = stOf(locId, idx);
       var color = STATUS_HEX[st];
       var label, m = metricObj(state.metric);
       if (m.kind === "judge" || !s) {
@@ -1365,6 +1489,7 @@
 
   function renderAll() {
     renderChips();
+    renderWayChips();
     renderTimeBar();
     renderSummary();   /* 신호등은 머리말에 있어 어느 탭에서나 보인다 */
     updateGridNote();

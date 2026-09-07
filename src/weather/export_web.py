@@ -106,6 +106,58 @@ def distance_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * radius * math.asin(math.sqrt(h))
 
 
+def bearing_deg(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """한 점에서 다른 점으로 갈 때의 방위각(도). 북이 0, 동이 90.
+
+    거리(distance_nm)와 짝을 이루는 함수다. 배가 그 구간에서 어느 쪽을
+    향하는지를 알아야 파도를 어느 쪽에서 맞는지 계산할 수 있다.
+    """
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dl = math.radians(lon2 - lon1)
+    y = math.sin(dl) * math.cos(p2)
+    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
+def wave_side(course_deg: float | None, wave_from_deg: float | None) -> str:
+    """파도를 어느 쪽에서 맞는지. 'head'(맞파) / 'beam'(횡파) / 'following'(등파)
+
+    파향(mwd)은 기상 관례대로 '파도가 오는 방향' 이다.
+    침로는 '배가 가는 방향' 이다. 둘의 차이가 0도면 정면에서 받는 것이다.
+
+        0~60도    맞파   앞에서
+       60~120도   횡파   옆에서   <- 롤링이 심해 가장 위험
+      120~180도   등파   뒤에서
+
+    둘 중 하나라도 값이 없으면 맞파로 본다(가장 흔하고 중간쯤 되는 가정).
+    """
+    if course_deg is None or wave_from_deg is None:
+        return "head"
+    rel = abs((wave_from_deg - course_deg + 180.0) % 360.0 - 180.0)
+    if rel < 60.0:
+        return "head"
+    if rel < 120.0:
+        return "beam"
+    return "following"
+
+
+def route_courses(config: Config, route: Any) -> dict[str, float]:
+    """지점마다 '거기서 다음 지점으로 갈 때의 침로'.
+
+    마지막 지점은 다음이 없으므로 바로 앞 구간의 침로를 그대로 쓴다.
+    돌아오는 길은 여기에 180도를 더하면 된다.
+    """
+    ids = [lid for lid in route.path_ids if lid in config.locations]
+    out: dict[str, float] = {}
+    for i in range(len(ids) - 1):
+        a, b = config.locations[ids[i]], config.locations[ids[i + 1]]
+        out[ids[i]] = round(bearing_deg(a.latitude, a.longitude,
+                                        b.latitude, b.longitude), 1)
+    if len(ids) >= 2:
+        out[ids[-1]] = out.get(ids[-2], 0.0)
+    return out
+
+
 def route_legs(config: Config, route: Any) -> list[dict[str, Any]]:
     """항로를 이루는 구간 목록. 각 구간의 두 지점과 거리(해리).
 
@@ -162,6 +214,9 @@ def build_meta(config: Config, collected_at: str | None,
             "dests": list(route.destination_ids),
             # 구간별 거리(해리). 소요 시간 계산에 쓴다.
             "legs": route_legs(config, route),
+            # 지점별 침로(그 지점에서 다음 지점으로 갈 때의 방위각).
+            # 화면이 파도를 어느 쪽에서 맞는지 계산할 때 쓴다.
+            "courses": route_courses(config, route),
             # 지도에 선을 그릴 좌표. 길 꺾는 점까지 들어 있어서
             # 거제도를 뚫지 않고 실제 항로대로 그려진다.
             "path": [[config.locations[lid].latitude,
@@ -193,6 +248,12 @@ def build_meta(config: Config, collected_at: str | None,
         "warning_collected_at": warning_collected,
         "routes": routes,
         "locations": locations,
+        # 파도를 어느 쪽에서 맞느냐에 따른 계수.
+        # safety_factor 는 파고 한계에 곱하고(횡파가 가장 엄격),
+        # speed_k 는 속도를 줄이는 데 쓴다(맞파가 가장 느림).
+        "wave_direction": config.raw.get("wave_direction") or {},
+        # 접안·하역 기준. 화면 색과 섞지 않고 따로 표시하는 데 쓴다.
+        "berthing": config.raw.get("berthing_thresholds") or {},
         # 소요 시간 계산에 쓰는 값. 화면에서 그때그때 계산한다.
         "voyage": {
             "vessels": [
@@ -233,10 +294,22 @@ def build_forecast(config: Config, rows: list[dict[str, Any]],
         series: dict[str, list[Any]] = {
             short: [None] * len(times) for short, _ in SERIES_MAP
         }
-        series["st"] = ["x"] * len(times)
+        # 판정을 두 벌 만든다. 파도를 어느 쪽에서 맞는지가 방향에 따라
+        # 정반대가 되기 때문이다(갈 때 등파면 올 때는 맞파).
+        series["st"] = ["x"] * len(times)        # 가는 길 (예전 이름 그대로)
+        series["st_back"] = ["x"] * len(times)   # 오는 길
+        series["berth"] = [None] * len(times)    # 접안·하역 (항만·터미널만)
         by_location[loc_id] = series
 
     warnings_cache: dict[str, list[dict[str, Any]]] = {}
+
+    # 지점마다 '거기서 다음 지점으로 갈 때의 침로'.
+    # 한 지점이 여러 항로에 걸쳐 있으면 먼저 나온 항로의 침로를 쓴다.
+    # (고현항~여수는 두 항로가 같은 길을 쓰므로 문제되지 않는다)
+    courses: dict[str, float] = {}
+    for route in config.routes.values():
+        for lid, deg in route_courses(config, route).items():
+            courses.setdefault(lid, deg)
 
     for row in rows:
         loc_id = row["location_id"]
@@ -254,8 +327,23 @@ def build_forecast(config: Config, rows: list[dict[str, Any]],
                 config, warning_rows, loc_id)
         hits = judge.active_warnings_at(
             config, warnings_cache[loc_id], row["valid_time"])
-        verdict = judge.judge_cell(config, row, hits)
-        target["st"][slot] = STATUS_CHAR[verdict.status]
+
+        # 가는 길과 오는 길은 침로가 180도 반대다.
+        course = courses.get(loc_id)
+        wave_from = row.get("wave_direction_deg")
+        side_out = wave_side(course, wave_from)
+        side_back = wave_side(None if course is None else (course + 180.0) % 360.0,
+                              wave_from)
+
+        target["st"][slot] = STATUS_CHAR[
+            judge.judge_cell(config, row, hits, side_out).status]
+        target["st_back"][slot] = STATUS_CHAR[
+            judge.judge_cell(config, row, hits, side_back).status]
+
+        # 접안·하역은 방향과 무관하다. 항만·터미널에서만 값이 나온다.
+        loc = config.locations.get(loc_id)
+        target["berth"][slot] = judge.berthing_status(
+            config, row, loc.type if loc else None)
 
     # 지점별로 지금 걸려 있는 특보 요약도 같이 넣는다.
     active: dict[str, list[dict[str, Any]]] = {}

@@ -395,10 +395,71 @@ def active_warnings_at(
 # 한 칸 종합 판정
 # ---------------------------------------------------------------------------
 
+def adjusted_thresholds(config: Config, side: str | None = None) -> dict[str, Any]:
+    """파도를 어느 쪽에서 맞느냐에 따라 파고 한계를 조정한 기준 묶음.
+
+    옆에서 맞으면(횡파) 롤링이 심해 바지 화물이 위험하므로 더 엄격하게,
+    뒤에서 맞으면(등파) 덜 위험하므로 느슨하게 본다.
+
+        맞파 x1.00 -> 불가 1.80 m
+        횡파 x0.80 -> 불가 1.44 m
+        등파 x1.30 -> 불가 2.34 m
+
+    side 를 주지 않으면 원래 기준을 그대로 돌려준다.
+    """
+    base = config.thresholds
+    if not side:
+        return base
+    factors = ((config.raw.get("wave_direction") or {}).get("safety_factor") or {})
+    factor = factors.get(side)
+    if not factor or abs(factor - 1.0) < 1e-9:
+        return base
+
+    out = dict(base)
+    wave = dict(base.get("wave_height_m") or {})
+    for key in ("caution_at", "unavailable_at"):
+        if wave.get(key) is not None:
+            wave[key] = round(float(wave[key]) * float(factor), 3)
+    out["wave_height_m"] = wave
+    return out
+
+
+def berthing_status(config: Config, values: dict[str, Any],
+                    loc_type: str | None) -> str | None:
+    """접안·하역을 할 수 있는 상태인지. 항만·터미널에서만 뜻이 있다.
+
+    ★ 이 값은 화면 색(운항 판단)과 섞지 않는다.
+      색은 "거기까지 갈 수 있나" 하나만 뜻하고, 이건 "가서 짐을 내릴 수
+      있나" 라서 다른 이야기다. 화면에는 작은 표시로 따로 붙인다.
+
+    돌려주는 값: 'n'(가능) / 'c'(주의) / 'u'(곤란) / None(해당 없음)
+    """
+    rule = config.raw.get("berthing_thresholds") or {}
+    if not rule or loc_type not in (rule.get("applies_to") or []):
+        return None
+
+    worst = NORMAL
+    for column in ("wave_height_m", "wind_speed_ms"):
+        limits = rule.get(column) or {}
+        value = values.get(column)
+        if value is None or not limits:
+            continue
+        if limits.get("unavailable_at") is not None and value >= limits["unavailable_at"]:
+            status = UNAVAILABLE
+        elif limits.get("caution_at") is not None and value >= limits["caution_at"]:
+            status = CAUTION
+        else:
+            status = NORMAL
+        if SEVERITY[status] > SEVERITY[worst]:
+            worst = status
+    return {NORMAL: "n", CAUTION: "c", UNAVAILABLE: "u"}[worst]
+
+
 def judge_cell(
     config: Config,
     values: dict[str, Any],
     warning_hits: list[WarningHit] | None = None,
+    wave_side: str | None = None,
 ) -> CellJudgement:
     """한 칸의 값들과 특보를 합쳐 가능/조건/불가 를 정한다.
 
@@ -408,7 +469,8 @@ def judge_cell(
       불가      : 하나 이상이 불가 기준 초과 또는 적용 특보 규칙에 해당
       데이터 없음: 판단에 필요한 필수 지표가 없음
     """
-    thresholds = config.thresholds
+    # 파도를 어느 쪽에서 맞느냐에 따라 파고 한계가 달라진다.
+    thresholds = adjusted_thresholds(config, wave_side)
     hits = warning_hits or []
 
     metrics: list[MetricResult] = []

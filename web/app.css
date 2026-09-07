@@ -194,6 +194,21 @@ input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(-
 }
 .signal:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* 방향 단추. 가는 길과 오는 길은 파도를 맞는 쪽이 정반대라
+   판정도 소요 시간도 달라진다. */
+.chip.way { font-size: 12px; padding: 5px 12px; }
+
+/* 하역 표시. 운항 판단(색)과 섞지 않으려고 모양을 다르게 했다. */
+.card-berth {
+  flex: 0 0 auto; font-size: 11px; font-weight: 700;
+  padding: 1px 6px; border-radius: 5px; border: 1px dashed currentColor;
+}
+.wx-berth {
+  margin-top: 6px; padding: 3px 8px; border-radius: 5px;
+  font-size: 11.5px; font-weight: 700; display: inline-block;
+  border: 1px dashed currentColor;
+}
+
 /* ---------- 지점 카드 ---------- */
 .cards { display: flex; flex-direction: column; gap: 8px; }
 .card {
