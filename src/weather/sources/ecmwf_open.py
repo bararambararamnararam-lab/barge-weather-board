@@ -234,8 +234,13 @@ def collect(config: Config, locations: list[Location] | None = None,
     tz = config.timezone
     rows: dict[tuple[str, str], dict[str, Any]] = {}
     prev_tp: dict[str, float] = {}
+    prev_step = None          # 앞 칸이 몇 시간째였는지 (강수를 시간당으로 나눌 때 씀)
 
     for step in steps:
+        # 이 칸이 앞 칸으로부터 몇 시간 뒤인지.
+        # 앞쪽은 3시간, 뒤쪽은 6시간 간격이라 칸마다 다르다.
+        span = (step - prev_step) if prev_step is not None else (steps[1] - steps[0]
+                                                                if len(steps) > 1 else 3)
         valid_utc = cycle.replace(tzinfo=timezone.utc) + timedelta(hours=step)
         key_time = valid_utc.astimezone(tz).strftime("%Y-%m-%dT%H:%M")
         got = results.get(step, {})
@@ -261,17 +266,24 @@ def collect(config: Config, locations: list[Location] | None = None,
 
             # tp 는 예보 시작부터의 '누적' 강수(m)다.
             # 그 칸의 강수량을 알려면 앞 스텝과의 차이를 내야 한다.
+            #
+            # ★ 그 차이를 다시 '구간 시간' 으로 나눠 시간당(mm/h) 으로 만든다.
+            #   안 나누면 3시간 칸과 6시간 칸이 같은 잣대로 재어져서,
+            #   6시간에 5 mm(시간당 0.83 mm, 이슬비)에도 주의가 떴다.
+            #   화면 이름도 '시간 강수량' 이라 이래야 맞다.
             if values.get("tp") is not None:
                 total_mm = values["tp"] * 1000.0
                 before = prev_tp.get(loc.id)
                 step_mm = total_mm if before is None else max(0.0, total_mm - before)
                 prev_tp[loc.id] = total_mm
-                cell["precipitation_mm"] = round(step_mm, 2)
+                cell["precipitation_mm"] = round(step_mm / max(span, 1), 2)
 
             if cell:
                 cell["source_forecast"] = "ECMWF IFS 0.25 (CC BY 4.0)"
                 cell["source_marine"] = "ECMWF WAM 0.25 (CC BY 4.0)"
                 rows[(loc.id, key_time)] = cell
+
+        prev_step = step
 
     # 격자 자료를 스텝 순서대로 정리한다.
     grid_out: dict[str, Any] = {}
