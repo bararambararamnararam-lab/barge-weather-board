@@ -1,4 +1,18 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* 브라우저 기본값 정리. 아래 각 문서의 <style> 이 이어서 덮어쓴다. */
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 14px system-ui, sans-serif; background: #fafafa; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
 <title>바지선 기상 보드 발표</title>
+</head>
+<body>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -627,30 +641,41 @@
       <div class="content">
         <div class="cols c2" style="align-items:start">
           <div>
-            <div class="tbox" style="margin-bottom:18px">
+            <div class="tbox" style="margin-bottom:16px">
               <table class="t">
-                <thead><tr><th>표시</th><th class="n">순간 풍속(돌풍)</th></tr></thead>
+                <thead><tr><th>크레인</th><th class="n">작업 한계</th></tr></thead>
+                <tbody>
+                  <tr><td>고정식 (선박용)</td><td class="n">순간풍속 15 m/s 이하</td></tr>
+                  <tr><td>이동식</td><td class="n">10분 평균 10 m/s 미만</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="tbox" style="margin-bottom:16px">
+              <table class="t">
+                <thead><tr><th>표시</th><th class="n">평균 · 순간 어느 쪽이든</th></tr></thead>
                 <tbody>
                   <tr><td><span class="sig b">선하역주의</span></td><td class="n">10 m/s 이상</td></tr>
-                  <tr><td><span class="sig b">선하역불가</span></td><td class="n">12 m/s 이상</td></tr>
+                  <tr><td><span class="sig b">선하역불가</span></td><td class="n">15 m/s 이상</td></tr>
                 </tbody>
               </table>
             </div>
             <ul class="pts tight">
               <li><b>현장에서 실제로 쓰는 기준</b>입니다. 문헌에서 끌어온 값이 아닙니다.</li>
-              <li><b>평균이 아니라 돌풍</b>을 봅니다. 매달린 화물은 순간적인 바람에 흔들립니다.</li>
+              <li>어느 크레인이 올지 미리 모르므로 <b>둘 중 하나라도 걸리면</b> 표시가 뜹니다.</li>
               <li>고현항은 하역, 도착지는 선적 — 둘 다 크레인 작업이라 <b>묶어서 선하역</b>입니다.</li>
             </ul>
           </div>
           <div>
             <div class="box" style="background:var(--accent-soft);border-color:#b9d7dc">
               <h3><i>실제 사례</i>9월 9일 고현항</h3>
-              <pre class="mono" style="font-size:14px;margin:8px 0 0;background:#fff">09:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 13.7)
-12:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 13.5)
-15:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 12.4)
-18:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 12.6)</pre>
-              <p style="margin-top:11px">바다는 멀쩡한데 그날 낮 내내 크레인을 못 돌립니다.
-                 <strong>이런 칸이 46칸 중 28칸.</strong> 예전 화면에서는 안 보이던 것입니다.</p>
+              <pre class="mono" style="font-size:13.5px;margin:8px 0 0;background:#fff">        항해      선하역        돌풍
+09:00  <b class="n">가능</b>  │  <b class="c">주의</b>   │  13.7
+12:00  <b class="n">가능</b>  │  <b class="c">주의</b>   │  13.5
+15:00  <b class="n">가능</b>  │  <b class="c">주의</b>   │  12.4
+18:00  <b class="n">가능</b>  │  <b class="c">주의</b>   │  12.6</pre>
+              <p style="margin-top:11px">바다는 멀쩡한데 그날 낮 내내 크레인 작업에 제약이 걸립니다.
+                 <strong>선하역이 항해보다 나쁜 칸이 180칸 중 35칸(19%).</strong>
+                 예전 화면에서는 안 보이던 것입니다.</p>
             </div>
             <div class="callout" style="margin-top:16px">
               색을 이 기준으로 칠하면 “못 간다”와 “짐을 못 싣는다”가
@@ -871,3 +896,6 @@
   show(0);
 })();
 </script>
+
+</body>
+</html>
