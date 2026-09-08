@@ -291,6 +291,51 @@
     return box;
   }
 
+  /* ---------------------------------------------------------------- 주소 QR
+     회의실에서 주소를 불러 주는 대신 화면을 보여 준다.
+     QR 그림(qr.svg)은 미리 만들어 둔 것이라 그리는 코드가 필요 없다. */
+
+  var QR_URL = "https://tinyurl.com/barge-weather";
+
+  function showQr(on) {
+    var m = $("qrModal");
+    if (!m) return;
+    m.hidden = !on;
+    if (on) {
+      var c = $("qrClose");
+      if (c) c.focus();
+    } else {
+      var b = $("qrBtn");
+      if (b) b.focus();
+    }
+  }
+
+  function copyUrl() {
+    var btn = $("qrCopy");
+    function done(ok) {
+      if (!btn) return;
+      btn.textContent = ok ? "복사했습니다" : "복사 실패";
+      setTimeout(function () { btn.textContent = "주소 복사"; }, 1600);
+    }
+    /* 옛 브라우저나 http 로 열었을 때는 clipboard 가 없다. 그때는
+       숨긴 칸에 넣고 execCommand 로 복사한다. */
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(QR_URL).then(function () { done(true); },
+                                                 function () { done(false); });
+      return;
+    }
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = QR_URL;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      done(document.execCommand("copy"));
+      document.body.removeChild(ta);
+    } catch (e) { done(false); }
+  }
+
   /* ---------------------------------------------------------------- 밝기
      시스템 설정만 따르던 것을 손으로도 고를 수 있게 한다.
      고른 값은 그 기기에만 기억된다(localStorage). */
@@ -673,7 +718,17 @@
     return { trunk: trunk, branch: branch, nodes: nodes };
   }
 
-  /* 어떤 지점에서 앞(도착지들)과 뒤(출발지)로 각각 얼마나 걸리는지. */
+  /* 이 지점에서 출발하면 어디까지 얼마나 걸리는지.
+
+     ★ 위쪽 방향 단추가 고른 쪽 하나만 계산한다.
+       예전에는 앞뒤 양쪽을 다 보여 줬는데 두 가지가 잘못됐다.
+         1) 위에서 방향을 골라 놓고 아래서 양쪽을 다 보여 주면
+            단추를 왜 눌렀는지 알 수 없다.
+         2) 더 나쁜 건, 판정(stOf)과 속도(dirSpeedFactor)가 고른 방향의
+            파향을 쓰기 때문에, 반대쪽 줄은 틀린 방향의 파향으로 계산된
+            값이었다. 가는 길을 골라 놓고 본 '고현항 向' 숫자는
+            돌아가는 배의 숫자가 아니었다.
+       한쪽만 내보내면 두 문제가 같이 없어진다. */
   function etaFor(locId, startIdx) {
     var route = routeObj();
     if (!route.legs || !route.legs.length) return null;
@@ -681,29 +736,34 @@
     var vessels = (META.voyage && META.voyage.vessels) || [];
     if (!vessels.length) return null;
 
+    var goingOut = (state.way !== "back");
     var pos = shape.nodes.indexOf(locId);
     var onBranch = (route.dests || []).indexOf(locId) >= 0;
-    var forward = [], backward = [];
+    var targets = [];
 
     if (onBranch) {
-      /* 도착지에 이미 있는 배. 앞으로 갈 곳은 없고 돌아가는 길만 있다. */
-      var myLeg = null;
-      shape.branch.forEach(function (l) { if (l.to === locId) myLeg = l; });
-      if (myLeg) {
-        var back = [{ from: myLeg.to, to: myLeg.from, nm: myLeg.nm }];
-        var upto = shape.trunk.slice().reverse().map(function (l) {
-          return { from: l.to, to: l.from, nm: l.nm };
-        });
-        backward.push({ id: shape.nodes[0], legs: back.concat(upto) });
+      /* 도착지에 있는 배. 가는 길이라면 여기가 종점이라 갈 곳이 없다. */
+      if (!goingOut) {
+        var myLeg = null;
+        shape.branch.forEach(function (l) { if (l.to === locId) myLeg = l; });
+        if (myLeg) {
+          var back = [{ from: myLeg.to, to: myLeg.from, nm: myLeg.nm }];
+          var upto = shape.trunk.slice().reverse().map(function (l) {
+            return { from: l.to, to: l.from, nm: l.nm };
+          });
+          targets.push({ id: shape.nodes[0], legs: back.concat(upto) });
+        }
       }
     } else if (pos >= 0) {
-      /* 본선 위의 배. 앞으로는 각 도착지까지, 뒤로는 출발지까지. */
-      var ahead = shape.trunk.slice(pos);
-      shape.branch.forEach(function (b) {
-        forward.push({ id: b.to, legs: ahead.concat([b]) });
-      });
-      if (pos > 0) {
-        backward.push({
+      if (goingOut) {
+        /* 앞으로 각 도착지까지 */
+        var ahead = shape.trunk.slice(pos);
+        shape.branch.forEach(function (b) {
+          targets.push({ id: b.to, legs: ahead.concat([b]) });
+        });
+      } else if (pos > 0) {
+        /* 뒤로 출발지까지 */
+        targets.push({
           id: shape.nodes[0],
           legs: shape.trunk.slice(0, pos).reverse().map(function (l) {
             return { from: l.to, to: l.from, nm: l.nm };
@@ -712,17 +772,15 @@
       }
     }
 
-    function pack(list) {
-      return list.map(function (t) {
-        var runs = vessels.map(function (ves) {
-          return { vessel: ves, result: runLegs(t.legs, startIdx, ves.speed_kn) };
-        });
-        var nm = 0;
-        t.legs.forEach(function (l) { nm += l.nm; });
-        return { id: t.id, nm: nm, runs: runs };
+    var packed = targets.map(function (t) {
+      var runs = vessels.map(function (ves) {
+        return { vessel: ves, result: runLegs(t.legs, startIdx, ves.speed_kn) };
       });
-    }
-    return { forward: pack(forward), backward: pack(backward) };
+      var nm = 0;
+      t.legs.forEach(function (l) { nm += l.nm; });
+      return { id: t.id, nm: nm, runs: runs };
+    });
+    return { targets: packed, goingOut: goingOut };
   }
 
   /* 지명에서 뒤쪽 낱말만. "거제 고현항" -> "고현항"
@@ -748,24 +806,32 @@
     if (!box) return;
     box.innerHTML = "";
     var eta = etaFor(locId, state.timeIndex);
-    if (!eta || (!eta.forward.length && !eta.backward.length)) {
-      box.hidden = true;
-      return;
-    }
+    if (!eta) { box.hidden = true; return; }
     box.hidden = false;
-    box.appendChild(el("div", "eta-title",
-      fmtTime(FC.times[state.timeIndex]) + " 에 이 지점에서 출발하면"));
 
     /* 방향을 '앞으로/돌아가기' 대신 그쪽 끝 지명으로 적는다.
        뱃사람 말로 "영성 향", "고현항 향" 이 훨씬 바로 읽힌다. */
     var route0 = routeObj();
     var shape0 = routeShape(route0);
     var startId = shape0.nodes.length ? shape0.nodes[0] : null;
-    var aheadLabel = (route0.short || "도착지") + " 向";
-    var backLabel = (startId ? tailName(startId) : "출발지") + " 向";
+    var dirLabel = eta.goingOut
+      ? ((route0.short || "도착지") + " 向")
+      : ((startId ? tailName(startId) : "출발지") + " 向");
 
-    [[aheadLabel, eta.forward], [backLabel, eta.backward]].forEach(function (pair) {
-      if (!pair[1].length) return;
+    /* 이 방향에서 더 갈 곳이 없는 지점(가는 길의 도착지, 오는 길의 고현항).
+       그냥 숨기면 왜 사라졌는지 알 수 없어서 한 줄을 남긴다. */
+    if (!eta.targets.length) {
+      box.appendChild(el("div", "eta-title",
+        "이 방향(" + dirLabel + ")에서는 여기가 종점입니다"));
+      box.appendChild(el("p", "eta-note",
+        "위쪽 방향 단추를 반대로 바꾸면 소요 시간이 나옵니다."));
+      return;
+    }
+
+    box.appendChild(el("div", "eta-title",
+      fmtTime(FC.times[state.timeIndex]) + " 에 이 지점에서 출발하면"));
+
+    [[dirLabel, eta.targets]].forEach(function (pair) {
       var row = el("div", "eta-row");
       row.appendChild(el("div", "eta-dir", pair[0]));
       var list = el("div", "eta-targets");
@@ -1558,6 +1624,13 @@
         else map.removeLayer(gridLayer);
       }
     };
+    $("qrBtn").onclick = function () { showQr(true); };
+    $("qrClose").onclick = function () { showQr(false); };
+    $("qrBack").onclick = function () { showQr(false); };
+    $("qrCopy").onclick = copyUrl;
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") showQr(false);
+    });
     $("themeBtn").onclick = function () {
       applyTheme(currentTheme() === "dark" ? "light" : "dark");
     };

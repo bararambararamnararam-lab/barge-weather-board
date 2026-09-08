@@ -28,6 +28,7 @@
 <header class="top">
   <div class="top-row">
     <h1 id="appTitle">바지선 운항 기상</h1>
+    <button id="qrBtn" class="icon-btn" type="button" aria-label="주소 QR 보여주기">QR</button>
     <button id="themeBtn" class="icon-btn" type="button" aria-label="밝기 바꾸기">☀</button>
     <button id="reloadBtn" class="icon-btn" type="button" aria-label="새로고침">↻</button>
   </div>
@@ -125,6 +126,25 @@
   <button data-view="grid" class="tab" type="button"><span>표</span></button>
   <button data-view="warn" class="tab" type="button"><span>특보</span></button>
 </nav>
+
+<!-- 옆 사람에게 주소를 알려 줄 때 쓰는 QR.
+     ★ QR 은 어두운 화면에서도 흰 바탕에 검정이어야 한다.
+       색을 뒤집으면 스캐너가 못 읽는 일이 많다. 그래서 이 카드 안쪽만
+       테마와 무관하게 흰색으로 고정한다. -->
+<div id="qrModal" class="modal" hidden>
+  <div class="modal-back" id="qrBack"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+    <h2 id="qrTitle">폰 카메라로 찍으세요</h2>
+    <div class="qr-plate">
+      <img src="qr.svg" alt="사이트 주소 QR 코드" width="240" height="240">
+    </div>
+    <p class="qr-url">tinyurl.com/barge-weather</p>
+    <div class="qr-btns">
+      <button id="qrCopy" class="qr-act" type="button">주소 복사</button>
+      <button id="qrClose" class="qr-act primary" type="button">닫기</button>
+    </div>
+  </div>
+</div>
 
 <div id="loading" class="loading">불러오는 중…</div>
 

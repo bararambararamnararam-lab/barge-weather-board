@@ -1,0 +1,889 @@
+<title>바지선 기상 보드 이용 설명서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ── 해도 색. 밝은 화면이 기본이고, 어두운 화면은 토큰만 바꾼다 ── */
+  :root {
+    --paper:  #e9eff1;
+    --card:   #ffffff;
+    --sunk:   #f2f6f7;
+    --ink:    #0b1f2a;
+    --dim:    #5b7681;
+    --line:   #c6d6db;
+    --line-2: #dde8eb;
+    --accent: #0e6b7a;
+    --accent-soft: #e0eef0;
+
+    /* 신호등. 앱 화면과 똑같은 값이라야 알아본다 */
+    --go:   #1a7f37;
+    --warn: #b58100;
+    --stop: #c62828;
+    --go-bg:   #e4f2e8;
+    --warn-bg: #f8f0d9;
+    --stop-bg: #f8e4e3;
+
+    --serif: "Gowun Batang", "Nanum Myeongjo", serif;
+    --sans:  "IBM Plex Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    --mono:  "IBM Plex Mono", "D2Coding", ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:  #071319;
+      --card:   #0f242e;
+      --sunk:   #0b1c24;
+      --ink:    #dde9ed;
+      --dim:    #8aa6b0;
+      --line:   #24404c;
+      --line-2: #1a323d;
+      --accent: #48bccd;
+      --accent-soft: #10333c;
+
+      --go:   #6fd48c;
+      --warn: #e8bf5a;
+      --stop: #f0857c;
+      --go-bg:   #12301c;
+      --warn-bg: #33290d;
+      --stop-bg: #3a1616;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:  #071319;
+    --card:   #0f242e;
+    --sunk:   #0b1c24;
+    --ink:    #dde9ed;
+    --dim:    #8aa6b0;
+    --line:   #24404c;
+    --line-2: #1a323d;
+    --accent: #48bccd;
+    --accent-soft: #10333c;
+
+    --go:   #6fd48c;
+    --warn: #e8bf5a;
+    --stop: #f0857c;
+    --go-bg:   #12301c;
+    --warn-bg: #33290d;
+    --stop-bg: #3a1616;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ── 전체 틀 ── */
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 100px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0 56px;
+  }
+  @media (min-width: 1000px) {
+    .wrap { grid-template-columns: 210px minmax(0, 1fr); }
+    .masthead { grid-column: 1 / -1; }
+  }
+
+  /* ── 표제 ── */
+  .masthead {
+    padding: 64px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 44px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .masthead h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: clamp(34px, 5.6vw, 54px);
+    line-height: 1.18;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 0 0 16px;
+  }
+  .masthead p {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--dim);
+    font-size: 17px;
+  }
+  .plate {
+    margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 34px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--dim);
+  }
+  .plate b { color: var(--ink); font-weight: 500; }
+
+  /* ── 목차 ── */
+  nav.toc { display: none; }
+  @media (min-width: 1000px) {
+    nav.toc {
+      display: block;
+      position: sticky;
+      top: 28px;
+      align-self: start;
+      max-height: calc(100dvh - 56px);
+      overflow-y: auto;
+    }
+  }
+  nav.toc h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    color: var(--dim);
+    text-transform: uppercase;
+    font-weight: 500;
+    margin: 0 0 14px;
+  }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  nav.toc a {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 6px;
+    padding: 5px 8px 5px 0;
+    color: var(--dim);
+    text-decoration: none;
+    font-size: 14px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+  nav.toc a:hover { color: var(--accent); background: var(--accent-soft); }
+  nav.toc a span { font-family: var(--mono); font-size: 11.5px; opacity: .75; padding-top: 2px; }
+
+  /* ── 본문 ── */
+  main { min-width: 0; max-width: 72ch; }
+  section { margin-bottom: 66px; scroll-margin-top: 24px; }
+  section > h2 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 27px;
+    line-height: 1.35;
+    margin: 0 0 6px;
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    align-items: baseline;
+    text-wrap: balance;
+  }
+  section > h2 em {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .rule { height: 1px; background: var(--line); margin: 0 0 24px 34px; }
+  h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    margin: 34px 0 10px;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 15px; }
+  main a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  strong { font-weight: 600; }
+  code, .num {
+    font-family: var(--mono);
+    font-size: .89em;
+    background: var(--sunk);
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+
+  ul, ol.steps { margin: 0 0 16px; padding-left: 0; list-style: none; }
+  ul li {
+    position: relative;
+    padding-left: 18px;
+    margin-bottom: 7px;
+  }
+  ul li::before {
+    content: "";
+    position: absolute;
+    left: 2px; top: .72em;
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  ol.steps { counter-reset: s; }
+  ol.steps li {
+    counter-increment: s;
+    position: relative;
+    padding-left: 34px;
+    margin-bottom: 13px;
+  }
+  ol.steps li::before {
+    content: counter(s);
+    position: absolute;
+    left: 0; top: 1px;
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    background: var(--accent);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 50%;
+  }
+
+  /* ── 표 ── */
+  .tablebox { overflow-x: auto; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--line-2); }
+  thead th {
+    background: var(--sunk);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  caption { caption-side: bottom; padding: 9px 14px; font-size: 12.5px; color: var(--dim); text-align: left; border-top: 1px solid var(--line-2); }
+
+  /* ── 신호등 딱지 ── */
+  .sig {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .sig.n { background: var(--go-bg);   color: var(--go); }
+  .sig.c { background: var(--warn-bg); color: var(--warn); }
+  .sig.u { background: var(--stop-bg); color: var(--stop); }
+  .sig.b { background: transparent; color: var(--dim); border: 1px dashed var(--line); }
+
+  /* ── 상자들. 역할마다 다른 모양 ── */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 15px 18px;
+    margin: 0 0 18px;
+    border-radius: 0 5px 5px 0;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 5px;
+  }
+  .caution {
+    border: 1px solid var(--stop);
+    background: var(--stop-bg);
+    padding: 15px 18px;
+    margin: 0 0 18px;
+    border-radius: 5px;
+  }
+  .caution p:last-child { margin-bottom: 0; }
+  .caution .lbl {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--stop);
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  /* ── 화면 흉내 ── */
+  .screen {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 0;
+    margin: 0 0 18px;
+    overflow: hidden;
+    font-size: 13.5px;
+  }
+  .screen .bar {
+    background: var(--sunk);
+    border-bottom: 1px solid var(--line-2);
+    padding: 7px 13px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .screen .body { padding: 14px 16px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 11px; }
+  .chip {
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 3px 12px;
+    font-size: 12.5px;
+    color: var(--dim);
+    background: var(--paper);
+  }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--card); font-weight: 500; }
+  .lamp { display: flex; flex-wrap: wrap; gap: 5px; }
+  .lamp i {
+    font-style: normal;
+    width: 26px; height: 26px;
+    border-radius: 4px;
+    display: grid; place-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .lamp i.n { background: var(--go-bg);   color: var(--go); }
+  .lamp i.c { background: var(--warn-bg); color: var(--warn); }
+  .lamp i.u { background: var(--stop-bg); color: var(--stop); }
+
+  pre.term {
+    background: var(--sunk);
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    padding: 13px 15px;
+    margin: 0 0 18px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  /* ── 항목/설명 짝 ── */
+  dl.pairs { margin: 0 0 18px; display: grid; gap: 0; }
+  dl.pairs > div {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px 18px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-2);
+  }
+  dl.pairs > div:last-child { border-bottom: 0; }
+  @media (min-width: 620px) {
+    dl.pairs > div { grid-template-columns: 130px 1fr; }
+  }
+  dl.pairs dt { font-weight: 600; font-size: 15px; }
+  dl.pairs dd { margin: 0; color: var(--dim); font-size: 14.5px; }
+  dl.pairs dd strong { color: var(--ink); }
+
+  footer.end {
+    grid-column: 1 / -1;
+    border-top: 2px solid var(--ink);
+    margin-top: 20px;
+    padding-top: 22px;
+    font-size: 13.5px;
+    color: var(--dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 30px;
+    justify-content: space-between;
+  }
+  footer.end span { font-family: var(--mono); font-size: 12px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Barge Weather Board · 이용 설명서</div>
+    <h1>바지선 운항 기상 보드<br>보는 법</h1>
+    <p>고현항에서 중국 영성·난퉁으로 가는 예항 항로의 기상을 한 화면에 모아
+       놓은 것입니다. 어느 시각에 어느 지점이 갈 만한지 색으로 보여 주고,
+       언제 도착할지 계산해 줍니다. 이 문서는 그 화면을 읽는 법입니다.</p>
+    <div class="plate">
+      <div>주소 <b>bararambararamnararam-lab.github.io/barge-weather-board</b></div>
+      <div>갱신 <b>하루 4번 · 05:15 09:15 17:15 21:15</b></div>
+      <div>예보 <b>앞으로 10일</b></div>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>차례</h2>
+    <ol>
+      <li><a href="#s1"><span>01</span>여는 법</a></li>
+      <li><a href="#s2"><span>02</span>화면 구성</a></li>
+      <li><a href="#s3"><span>03</span>색의 뜻</a></li>
+      <li><a href="#s4"><span>04</span>방향 단추</a></li>
+      <li><a href="#s5"><span>05</span>선하역 표시</a></li>
+      <li><a href="#s6"><span>06</span>도착 예상</a></li>
+      <li><a href="#s7"><span>07</span>특보</a></li>
+      <li><a href="#s8"><span>08</span>지난 기록</a></li>
+      <li><a href="#s9"><span>09</span>자료의 출처</a></li>
+      <li><a href="#s10"><span>10</span>믿을 것과 못 믿을 것</a></li>
+      <li><a href="#s11"><span>11</span>안 될 때</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- ─────────────────────────────────────────────── 01 -->
+    <section id="s1">
+      <h2><em>01</em>여는 법</h2>
+      <div class="rule"></div>
+
+      <p>인터넷 주소창에 아래를 칩니다. 로그인도 설치도 필요 없습니다.</p>
+      <pre class="term">https://bararambararamnararam-lab.github.io/barge-weather-board/</pre>
+
+      <h3>폰에 앱처럼 두기</h3>
+      <p>매번 주소를 치기 번거로우면 바탕화면에 아이콘으로 둘 수 있습니다.
+         진짜 앱을 설치하는 게 아니라 바로가기를 만드는 것이라, 지우는 것도
+         아이콘을 길게 눌러 삭제하면 끝입니다.</p>
+      <ol class="steps">
+        <li><strong>아이폰</strong> — 사파리로 열고 아래 가운데 공유 단추(↑) →
+            <em>홈 화면에 추가</em></li>
+        <li><strong>안드로이드</strong> — 크롬으로 열고 오른쪽 위 점 세 개 →
+            <em>홈 화면에 추가</em> 또는 <em>앱 설치</em></li>
+      </ol>
+
+      <h3>남에게 주소 알려 주기</h3>
+      <p>오른쪽 위 <code>QR</code> 단추를 누르면 QR 코드가 뜹니다. 상대가
+         폰 카메라로 찍으면 바로 열립니다. 회의실에서 주소를 불러 줄 필요가
+         없습니다. <strong>주소 복사</strong> 단추로 메신저에 붙여 넣을 수도
+         있습니다.</p>
+      <pre class="term">tinyurl.com/barge-weather</pre>
+
+      <h3>밝기</h3>
+      <p>오른쪽 위 <code>☀</code> 단추로 어두운 화면과 밝은 화면을 바꿉니다.
+         기본은 어두운 화면입니다. 고른 값은 그 기기에만 기억되므로,
+         폰에서 밝게 해도 사무실 PC는 그대로입니다.</p>
+
+      <div class="note">
+        <span class="lbl">자료가 오래된 것 같으면</span>
+        <p>오른쪽 위 <code>↻</code> 단추를 누릅니다. 화면 맨 아래에 자료를
+           받아온 시각이 적혀 있으니 그걸로 확인하면 됩니다.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 02 -->
+    <section id="s2">
+      <h2><em>02</em>화면 구성</h2>
+      <div class="rule"></div>
+
+      <p>위에서 아래로 <strong>항로 → 방향 → 신호등 요약</strong>이 늘 붙어
+         있고, 그 아래가 탭에 따라 바뀝니다. 맨 아래에 시간 슬라이더가 있습니다.</p>
+
+      <div class="screen">
+        <div class="bar">화면 위쪽</div>
+        <div class="body">
+          <div class="chips">
+            <span class="chip on">영성</span>
+            <span class="chip">CSME</span>
+          </div>
+          <div class="chips">
+            <span class="chip on">고현항 → 영성</span>
+            <span class="chip">영성 → 고현항</span>
+          </div>
+          <div class="lamp">
+            <i class="n">가</i><i class="c">조</i><i class="c">조</i><i class="n">가</i>
+            <i class="n">가</i><i class="u">불</i><i class="u">불</i><i class="c">조</i>
+            <i class="n">가</i><i class="n">가</i>
+          </div>
+        </div>
+      </div>
+
+      <dl class="pairs">
+        <div><dt>항로 단추</dt><dd><strong>영성</strong>(고현항 ↔ 영성법인·가야, 지점 10곳) 과
+          <strong>CSME</strong>(고현항 ↔ 난퉁, 지점 8곳) 중 고릅니다.</dd></div>
+        <div><dt>방향 단추</dt><dd>가는 길인지 오는 길인지. 이게 판정과 도착 시각을 바꿉니다.
+          자세한 건 <a href="#s4">04</a>번에.</dd></div>
+        <div><dt>신호등 요약</dt><dd>고른 항로의 모든 지점을 순서대로 늘어놓은 것. 출발지가
+          왼쪽, 도착지가 오른쪽입니다. 어느 구간이 막혔는지 한눈에 보입니다.</dd></div>
+        <div><dt>시간 슬라이더</dt><dd>맨 아래. 좌우로 밀면 그 시각의 상태로 화면 전체가
+          바뀝니다. 신호등도, 지도 색도, 도착 예상도 같이 움직입니다.</dd></div>
+        <div><dt>오른쪽 위 단추</dt><dd><code>QR</code> 주소 알려 주기 ·
+          <code>☀</code> 밝기 · <code>↻</code> 새로 받기</dd></div>
+      </dl>
+
+      <h3>탭 네 개</h3>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>탭</th><th>보여 주는 것</th><th>언제 쓰나</th></tr></thead>
+          <tbody>
+            <tr><td><strong>목록</strong></td><td>지점마다 카드 하나. 판정과 주요 수치</td><td>기본. 훑어볼 때</td></tr>
+            <tr><td><strong>지도</strong></td><td>실제 위치에 색을 칠하고 항로선을 그림</td><td>어디가 막혔는지 볼 때</td></tr>
+            <tr><td><strong>표</strong></td><td>지점 × 시각 격자. 색이 언제 바뀌는지</td><td>출발 시점 고를 때</td></tr>
+            <tr><td><strong>특보</strong></td><td>기상청 특보 원문</td><td>근거를 확인할 때</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>목록에서 카드를 누르면 그 지점의 <strong>상세</strong>로 들어갑니다.
+         시각마다 풍속·돌풍·파고·시정·강수와 판정이 한 줄씩 나오고,
+         맨 아래에 지난 기록이 접혀 있습니다.</p>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 03 -->
+    <section id="s3">
+      <h2><em>03</em>색의 뜻</h2>
+      <div class="rule"></div>
+
+      <p>색은 <strong>“거기까지 갈 수 있나”</strong> 하나만 뜻합니다.
+         짐을 싣고 내리는 것은 색에 넣지 않았습니다(<a href="#s5">05</a>번).</p>
+
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>색</th><th>뜻</th><th>어떻게 하나</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sig n">가능</span></td><td>기준을 다 넘지 않음</td><td>평소대로</td></tr>
+            <tr><td><span class="sig c">조건</span></td><td>기준 하나 이상이 주의 구간</td><td>갈 수는 있으나 느려짐. 상황을 봐 가며</td></tr>
+            <tr><td><span class="sig u">불가</span></td><td>기준 하나 이상이 불가 구간</td><td>기다림</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><strong>다섯 가지 중 가장 나쁜 것을 따릅니다.</strong> 파고가 아무리
+         좋아도 시정이 1 km면 불가입니다.</p>
+
+      <div class="tablebox">
+        <table>
+          <thead>
+            <tr><th>보는 값</th><th class="n">조건</th><th class="n">불가</th><th>근거</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>평균 풍속</td><td class="n">10 m/s</td><td class="n">12 m/s</td><td>예인 전용 보수값. 기상청 풍랑주의보(14)보다 엄격</td></tr>
+            <tr><td>순간 풍속</td><td class="n">14 m/s</td><td class="n">16 m/s</td><td>평균 기준의 1.33배</td></tr>
+            <tr><td>유의파고</td><td class="n">1.2 m</td><td class="n">1.8 m</td><td>DNV-ST-N001 설계 2.5 m × 예보오차 계수 0.71</td></tr>
+            <tr><td>시정</td><td class="n">3 km 미만</td><td class="n">1 해리 미만</td><td>충돌 회피에 필요한 최소</td></tr>
+            <tr><td>시간 강수량</td><td class="n">5 mm/h</td><td class="n">—</td><td>시야와 갑판 작업 제약</td></tr>
+          </tbody>
+          <caption>파고 기준은 파도를 맞는 쪽에 따라 달라집니다 — <a href="#s4">04</a>번.</caption>
+        </table>
+      </div>
+
+      <div class="note">
+        <span class="lbl">왜 기상청 기준보다 엄한가</span>
+        <p>기상청 풍랑주의보는 <span class="num">14 m/s · 3 m</span> 인데 우리는
+           <span class="num">12 m/s · 1.8 m</span> 입니다. 특보 기준은 일반 선박
+           기준이고, 동력 없이 끌려가는 바지선은 그보다 취약합니다.
+           그래서 <strong>특보가 뜨기 전에 이미 불가</strong>가 됩니다.
+           특보가 안 떴는데 빨강인 것은 고장이 아닙니다.</p>
+      </div>
+
+      <p>어느 값 때문에 그 색이 됐는지는 목록 카드와 표의 각 줄에 작은
+         딱지로 붙어 있습니다. 표 아래 범례에도 기준이 그대로 적혀 있습니다.</p>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 04 -->
+    <section id="s4">
+      <h2><em>04</em>방향 단추</h2>
+      <div class="rule"></div>
+
+      <p><strong>날씨를 바꾸는 게 아니라, 그 날씨를 배가 어느 쪽에서 맞는지를
+         바꿉니다.</strong> 파고·풍속·파향 숫자는 하나도 안 바뀝니다.</p>
+
+      <p>같은 파고 <span class="num">1.9 m</span> 라도 뱃머리로 정면에서 받는
+         것과 뒤에서 밀어 주는 것은 다릅니다. 배가 가는 방향(침로)과 파도가
+         오는 방향의 각도로 셋으로 나눕니다.</p>
+
+      <div class="tablebox">
+        <table>
+          <thead>
+            <tr><th>맞는 쪽</th><th class="n">각도</th><th class="n">불가 기준</th><th class="n">속도</th><th>왜</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>맞파</strong> 앞에서</td><td class="n">0–60°</td><td class="n">1.80 m</td><td class="n">−10 %</td><td>제일 느리다</td></tr>
+            <tr><td><strong>옆파</strong> 옆에서</td><td class="n">60–120°</td><td class="n">1.44 m</td><td class="n">−2 %</td><td>롤링이 커 <strong>제일 위험</strong></td></tr>
+            <tr><td><strong>등파</strong> 뒤에서</td><td class="n">120–180°</td><td class="n">2.34 m</td><td class="n">+5 %</td><td>밀어 준다</td></tr>
+          </tbody>
+          <caption>속도는 파고 2 m 기준. 위험한 순서와 느린 순서가 다릅니다.</caption>
+        </table>
+      </div>
+
+      <h3>실제로 이렇게 갈립니다</h3>
+      <p>영성 항로, 9월 9일 18시. 같은 시각 같은 파고인데 방향에 따라 색이
+         달라지는 것을 보십시오.</p>
+
+      <pre class="term">지점            침로    파고    파향 | 갈 때       | 올 때
+서해 남부 먼바다   318°   1.89m    2° | 맞파  <b style="color:var(--stop)">불가</b> | 등파  <b style="color:var(--warn)">조건</b>
+스다오 동방      324°   1.89m   23° | 맞파  <b style="color:var(--stop)">불가</b> | 등파  <b style="color:var(--warn)">조건</b>
+흑산도 북방      313°   1.42m  346° | 맞파  <b style="color:var(--warn)">조건</b> | 등파  <b style="color:var(--go)">가능</b>
+영성 묘박지      271°   1.54m   37° | 등파  <b style="color:var(--go)">가능</b> | 맞파  <b style="color:var(--warn)">조건</b>
+영성법인        145°   1.54m   37° | 옆파  <b style="color:var(--stop)">불가</b> | 옆파  <b style="color:var(--stop)">불가</b></pre>
+
+      <p><strong>서해 남부 먼바다</strong> — 갈 때는 침로 318°(북서)로 가는데
+         파도가 2°(북)에서 옵니다. 거의 정면이라 맞파, 기준 1.80 m 에
+         1.89 m 라 <span class="sig u">불가</span>. 올 때는 침로가 138°(남동)로
+         뒤집혀 같은 파도를 뒤에서 받습니다. 기준이 2.34 m 로 올라가
+         <span class="sig c">조건</span>이 됩니다.</p>
+
+      <p><strong>영성법인은 양쪽 다 불가</strong>입니다. 침로 145°에 파도가
+         37°에서 오니 차이가 108° — 옆입니다. 뒤집어도 288°, 여전히 옆.
+         <strong>옆파는 뒤집어도 옆입니다.</strong></p>
+
+      <div class="caution">
+        <span class="lbl">알아둘 것</span>
+        <p>시간 슬라이더에서 보는 색은 <strong>“그 시각에 그 지점을 그 방향으로
+           지난다면”</strong> 입니다. 지금 출발하면 서해 남부는 이틀 뒤에 지납니다.
+           도착 예상 시각(<a href="#s6">06</a>번)은 시간을 따라가며 계산하지만,
+           지도 색은 슬라이더가 가리키는 그 시각 그대로입니다.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 05 -->
+    <section id="s5">
+      <h2><em>05</em>선하역 표시</h2>
+      <div class="rule"></div>
+
+      <p>배가 항구까지 가는 것과, 도착해서 크레인을 돌리는 것은 다른 문제입니다.
+         고현항에서는 짐을 내리고 도착지에서는 싣는데, 둘 다 크레인 작업이라
+         묶어서 <strong>선하역</strong>이라 부릅니다.</p>
+
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>표시</th><th class="n">순간 풍속(돌풍)</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sig b">선하역주의</span></td><td class="n">10 m/s 이상</td></tr>
+            <tr><td><span class="sig b">선하역불가</span></td><td class="n">12 m/s 이상</td></tr>
+          </tbody>
+          <caption>현장에서 실제로 쓰는 기준입니다. 부두 네 곳에만 붙습니다 —
+                   고현항 · 영성법인 · 영성가야 · 난퉁 CSME.</caption>
+        </table>
+      </div>
+
+      <p><strong>평균이 아니라 돌풍을 봅니다.</strong> 크레인에 매달린 화물은
+         순간적으로 훅 부는 바람에 흔들립니다. 평균이 얌전해도 돌풍 한 번에
+         작업을 멈춥니다.</p>
+
+      <h3>색과 섞지 않은 이유</h3>
+      <p>이 기준으로 색을 칠하면 “못 간다”와 “가긴 가는데 짐을 못 싣는다”가
+         같은 빨강이 되어 헷갈립니다. 그래서 색은 항해 기준 하나로 두고,
+         선하역은 점선 테두리 딱지로 따로 붙였습니다.</p>
+
+      <div class="note">
+        <span class="lbl">읽는 법</span>
+        <p>고현항이 <span class="sig n">가능</span> 인데
+           <span class="sig b">선하역불가</span> 가 붙어 있다 →
+           <strong>배는 문제없이 가는데 가 봤자 짐을 못 내린다.</strong>
+           출발을 미루는 게 나을 수 있습니다.</p>
+      </div>
+
+      <p>실제로 이런 칸이 흔합니다. 9월 9일 낮 고현항은 바다가 멀쩡한데
+         돌풍이 <span class="num">12–14 m/s</span> 로 불어 오전 9시부터
+         저녁 6시까지 내내 선하역 불가였습니다. 예전 화면에서는 안 보이던
+         것입니다.</p>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 06 -->
+    <section id="s6">
+      <h2><em>06</em>도착 예상</h2>
+      <div class="rule"></div>
+
+      <p>지금(또는 슬라이더가 가리키는 시각) 출발하면 언제 닿는지 계산합니다.
+         구간마다 그 시각의 예보를 그때그때 반영하며 시간을 따라갑니다.</p>
+
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>배</th><th class="n">평수 속력</th></tr></thead>
+          <tbody>
+            <tr><td>예인선 + 바지선</td><td class="n">6.5 kn</td></tr>
+            <tr><td>자항선</td><td class="n">9.0 kn</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>계산에 들어가는 규칙:</p>
+      <ul>
+        <li><span class="sig c">조건</span> 구간은 속력의 <strong>75 %</strong>로 지납니다</li>
+        <li><span class="sig u">불가</span> 구간은 <strong>기상이 나아질 때까지 기다립니다</strong> (최대 72시간)</li>
+        <li>파향에 따라 맞파는 느려지고 등파는 빨라집니다(<a href="#s4">04</a>번)</li>
+      </ul>
+
+      <p>그래서 <strong>가는 길과 오는 길의 소요 시간이 다르게 나옵니다.</strong>
+         방향 단추를 바꾸면 숫자가 바뀝니다. 며칠씩 차이 나는 때도 있습니다.</p>
+
+      <div class="note">
+        <span class="lbl">고른 방향 하나만 나옵니다</span>
+        <p>위에서 <strong>고현항 → 영성</strong>을 골랐으면
+           <span class="num">영성 向</span> 만 나옵니다. 반대쪽 숫자를 보려면
+           위쪽 방향 단추를 바꿔야 합니다.</p>
+        <p>도착지에서 가는 길을 고르면 <em>“이 방향에서는 여기가 종점입니다”</em>
+           라고 나옵니다. 이미 다 온 것이라 더 갈 곳이 없다는 뜻입니다.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 07 -->
+    <section id="s7">
+      <h2><em>07</em>특보</h2>
+      <div class="rule"></div>
+
+      <p>한국 기상청이 발표한 해상 특보를 그대로 가져옵니다.
+         풍랑주의보·경보, 강풍, 태풍 같은 것들입니다.</p>
+      <ul>
+        <li>지점마다 해당 해역의 특보를 찾아 붙입니다</li>
+        <li>발표 시각과 <strong>해제 예정 시각</strong>을 읽어, 지난 특보는 자동으로 사라집니다</li>
+        <li>해제 시각을 못 읽는 경우 48시간 뒤에 만료시킵니다</li>
+      </ul>
+
+      <div class="note">
+        <span class="lbl">중국 쪽은 특보가 없습니다</span>
+        <p>기상청 특보는 한국 관할 해역만 나옵니다. 영성·난퉁 부근은 특보
+           없이 예보 수치만으로 판단합니다. 그쪽이 조용해 보인다고 안전한
+           것이 아니라, <strong>특보라는 자료 자체가 없는 것</strong>입니다.</p>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 08 -->
+    <section id="s8">
+      <h2><em>08</em>지난 기록</h2>
+      <div class="rule"></div>
+
+      <p>받아 온 자료를 계속 쌓아 두고 있습니다. 세 가지를 볼 수 있습니다.</p>
+
+      <dl class="pairs">
+        <div><dt>실황</dt><dd>실제로 있었던 날씨. 목록에서 지점을 눌러 상세로 들어가면
+          맨 아래에 있습니다.</dd></div>
+        <div><dt>예보 이력</dt><dd>그때 예보가 뭐라고 했었는지. 실황과 나란히 보면
+          <strong>예보가 얼마나 맞았는지</strong> 확인됩니다.</dd></div>
+        <div><dt>특보 이력</dt><dd>특보가 언제 떴다 언제 풀렸는지. 특보 탭 아래에 있습니다.</dd></div>
+      </dl>
+
+      <p>보관 기간은 실황 2년, 예보 1년입니다. 시간이 쌓이면 이 기록으로
+         기준을 실제 결항 사례와 대조해 조정할 수 있습니다.</p>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 09 -->
+    <section id="s9">
+      <h2><em>09</em>자료의 출처</h2>
+      <div class="rule"></div>
+
+      <p>네 기관에서 받아 항목별로 가장 나은 것을 씁니다. 모두 공개 자료이고
+         상업적 이용이 허용된 것들입니다.</p>
+
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>기관</th><th>가져오는 것</th><th>왜 이걸</th></tr></thead>
+          <tbody>
+            <tr><td><strong>ECMWF</strong><br><span class="num">IFS · WAM</span></td>
+                <td>풍속·풍향·돌풍·강수<br>유의파고·파향·파주기</td>
+                <td>중기 예보 정확도가 세계 최고. 파랑 모델을 같이 돌림</td></tr>
+            <tr><td><strong>NOAA</strong><br><span class="num">GFS</span></td>
+                <td>시정</td>
+                <td>ECMWF 공개본에 시정이 없음</td></tr>
+            <tr><td><strong>MET Norway</strong></td>
+                <td>가까운 시각의 바람 보정</td>
+                <td>단기 바람이 더 촘촘함</td></tr>
+            <tr><td><strong>대한민국 기상청</strong></td>
+                <td>해상 특보</td>
+                <td>공식 발표. 예보 수치로는 대체 불가</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>언제 갱신되나</h3>
+      <p>하루 네 번 자동으로 받습니다 —
+         <span class="num">05:15 · 09:15 · 17:15 · 21:15</span> (한국시간).
+         전 세계 예보 모델이 하루 네 번 나오는데, 그게 다 나온 뒤를 노려
+         잡은 시각입니다. 화면 맨 아래에 실제로 받아온 시각이 적혀 있습니다.</p>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 10 -->
+    <section id="s10">
+      <h2><em>10</em>믿을 것과 못 믿을 것</h2>
+      <div class="rule"></div>
+
+      <div class="caution">
+        <span class="lbl">이것부터</span>
+        <p>이 화면은 <strong>판단을 돕는 자료</strong>이지 판단 자체가 아닙니다.
+           최종 결정은 선장과 현장 책임자의 몫입니다. 화면이 초록이라고
+           안전이 보장되지 않고, 빨강이라고 반드시 못 가는 것도 아닙니다.</p>
+      </div>
+
+      <h3>믿어도 되는 것</h3>
+      <ul>
+        <li><strong>수치 자체</strong> — 세계 최고 수준 모델의 값을 손대지 않고 그대로 씁니다</li>
+        <li><strong>특보</strong> — 기상청 발표 원문 그대로입니다</li>
+        <li><strong>선하역 기준</strong> — 현장에서 실제로 쓰는 값입니다</li>
+        <li><strong>가까운 시각</strong> — 2–3일 안쪽 예보는 상당히 정확합니다</li>
+      </ul>
+
+      <h3>아직 검증 안 된 것</h3>
+      <ul>
+        <li><strong>파향 계수</strong> — 한국선급 부가저항표로 계산했고, 등파에서
+            빨라진다는 결과가 선원 증언과 맞아 채택했습니다. 실제 운항과
+            대조한 적은 없습니다.</li>
+        <li><strong>풍속 12 m/s</strong> — 실제 결항 기록과 대조하기 전 값입니다.
+            보수적으로 잡혀 있을 수 있습니다.</li>
+        <li><strong>예인선 제원</strong> — 볼라드 풀 50 t, 풍압면적 240 m² 는
+            항양 예인선 전형값으로 가정한 것입니다. 실제 배 제원을 알면
+            고쳐야 합니다.</li>
+      </ul>
+
+      <h3>구조적인 한계</h3>
+      <ul>
+        <li><strong>예보는 예보입니다</strong> — 5일 넘어가면 참고 수준입니다.
+            그래서 파고 기준에 예보 오차 계수(0.71)를 이미 곱해 뒀습니다.</li>
+        <li><strong>조류·조석은 안 봅니다</strong> — 좁은 수로에서는 이게 크게 작용합니다</li>
+        <li><strong>중국 해역 특보 없음</strong> — <a href="#s7">07</a>번 참고</li>
+        <li><strong>격자 자료입니다</strong> — 연안 지형이 만드는 국지적 강풍은
+            잡히지 않습니다</li>
+      </ul>
+    </section>
+
+    <!-- ─────────────────────────────────────────────── 11 -->
+    <section id="s11">
+      <h2><em>11</em>안 될 때</h2>
+      <div class="rule"></div>
+
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>증상</th><th>해 볼 것</th></tr></thead>
+          <tbody>
+            <tr><td>화면이 안 뜬다</td>
+                <td>주소 끝에 <code>/</code> 가 있는지 확인. 그래도 안 되면 잠시 뒤 다시.
+                    깃허브 쪽 점검 중일 수 있습니다.</td></tr>
+            <tr><td>자료가 며칠 전 것이다</td>
+                <td><code>↻</code> 를 누릅니다. 그래도 그대로면 자동 수집이
+                    실패한 것이니 관리자에게 알려 주십시오.</td></tr>
+            <tr><td>지도가 이상하게 확대돼 있다</td>
+                <td>탭을 나갔다 들어오면 원래대로 돌아옵니다.</td></tr>
+            <tr><td>특보가 안 보인다</td>
+                <td>중국 해역이면 원래 없습니다(<a href="#s7">07</a>번).
+                    한국 해역인데 없으면 실제로 특보가 없는 것입니다.</td></tr>
+            <tr><td>회색 칸이 있다</td>
+                <td><span class="sig b">데이터 없음</span> 입니다. 그 시각 그 지점
+                    자료를 못 받은 것이라, 판단 근거가 없다는 뜻입니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>기준을 고치고 싶으면</h3>
+      <p>모든 기준값은 <code>config/weather_config.yaml</code> 한 파일에 모여
+         있고, 각 값마다 왜 그 값인지 근거가 한글로 적혀 있습니다.
+         숫자만 고치면 다음 수집부터 반영됩니다. 코드는 건드릴 필요 없습니다.</p>
+    </section>
+
+  </main>
+
+  <footer class="end">
+    <div>바지선 운항 기상 보드 · 이용 설명서</div>
+    <span>2026-09-08</span>
+  </footer>
+
+</div>

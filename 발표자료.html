@@ -1,0 +1,872 @@
+<title>바지선 기상 보드 발표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ==========================================================
+     프로젝터용 발표 화면 — 1280 x 720 (HD)
+
+     밝은 배경 하나로 고정했습니다. 조명이 켜진 회의실에서
+     어두운 슬라이드는 뭉개져 안 보이기 때문입니다.
+     그래서 보는 사람의 화면 설정(밝게/어둡게)과 무관하게
+     늘 같은 색으로 나옵니다.
+     ========================================================== */
+  :root {
+    --stage-w: 1280px;
+    --stage-h: 720px;
+
+    --surround: #08161d;
+    --paper:  #f5f8f9;
+    --card:   #ffffff;
+    --ink:    #0b1f2a;
+    --dim:    #55707b;
+    --faint:  #8ba4ad;
+    --line:   #cfdde1;
+    --line-2: #e4edef;
+    --accent: #0e6b7a;
+    --accent-2: #12889b;
+    --accent-soft: #e2eff1;
+
+    --go:   #1a7f37;
+    --warn: #a97800;
+    --stop: #c62828;
+    --go-bg:   #e2f1e7;
+    --warn-bg: #f9f0d8;
+    --stop-bg: #f9e5e4;
+
+    --serif: "Gowun Batang", "Nanum Myeongjo", serif;
+    --sans:  "IBM Plex Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    --mono:  "IBM Plex Mono", "D2Coding", ui-monospace, monospace;
+  }
+
+  body {
+    background: var(--surround);
+    color: var(--ink);
+    font-family: var(--sans);
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  /* 무대를 화면에 맞춰 통째로 줄인다. 어떤 해상도에서 열어도
+     1280x720 비율 그대로 나오게 하려는 것이다. */
+  #fit {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+  }
+  #stage {
+    width: var(--stage-w);
+    height: var(--stage-h);
+    background: var(--paper);
+    position: relative;
+    overflow: hidden;
+    transform-origin: center center;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 24px 70px rgba(0,0,0,.5);
+  }
+
+  /* ── 슬라이드 공통 틀 ── */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 44px 62px 30px 96px;
+  }
+  .slide[hidden] { display: none !important; }
+
+  /* 왼쪽 세로 띠 — 번호와 갈래를 늘 같은 자리에 둔다 */
+  .rail {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 56px;
+    background: var(--accent);
+    color: #fff;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    justify-items: center;
+    padding: 26px 0 22px;
+  }
+  .rail .no {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .06em;
+  }
+  .rail .vert {
+    writing-mode: vertical-rl;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    opacity: .72;
+    align-self: end;
+    margin-bottom: 14px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .19em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h2.head {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 43px;
+    line-height: 1.22;
+    letter-spacing: -.015em;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  .sub {
+    font-size: 19px;
+    color: var(--dim);
+    margin: 6px 0 0;
+    max-width: 78ch;
+    line-height: 1.55;
+  }
+  .content { align-self: center; padding: 14px 0 4px; min-height: 0; }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--faint);
+    letter-spacing: .07em;
+    border-top: 1px solid var(--line-2);
+    padding-top: 10px;
+  }
+
+  /* ── 표지 ── */
+  .cover {
+    padding: 0;
+    grid-template-rows: 1fr;
+    background:
+      radial-gradient(1100px 520px at 78% 8%, #e6f1f3 0%, transparent 62%),
+      var(--paper);
+  }
+  .cover .rail { background: var(--ink); }
+  .cover-in {
+    padding: 0 62px 0 96px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 60px;
+    height: 100%;
+  }
+  .cover h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 66px;
+    line-height: 1.14;
+    letter-spacing: -.02em;
+    margin: 0 0 20px;
+  }
+  .cover .lead { font-size: 20px; color: var(--dim); line-height: 1.6; max-width: 46ch; margin: 0 0 30px; }
+  .cover .meta {
+    display: flex;
+    gap: 30px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--faint);
+    letter-spacing: .05em;
+  }
+  .cover .meta b { color: var(--ink); font-weight: 500; display: block; font-size: 14px; margin-top: 3px; }
+
+  .qrcard {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 18px 14px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(11,31,42,.09);
+  }
+  .qrcard svg { display: block; width: 176px; height: 176px; image-rendering: pixelated; }
+  .qrcard .cap {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--dim);
+    margin-top: 10px;
+    letter-spacing: .02em;
+  }
+
+  /* ── 조각들 ── */
+  .cols { display: grid; gap: 22px; }
+  .cols.c2 { grid-template-columns: 1fr 1fr; }
+  .cols.c3 { grid-template-columns: repeat(3, 1fr); }
+  .cols.c4 { grid-template-columns: repeat(4, 1fr); }
+
+  .box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .box h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 9px;
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+  }
+  .box h3 i {
+    font-style: normal;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: .1em;
+  }
+  .box p { margin: 0; font-size: 15.5px; line-height: 1.62; color: var(--dim); }
+  .box p + p { margin-top: 9px; }
+  .box strong { color: var(--ink); font-weight: 600; }
+
+  ul.pts { list-style: none; margin: 0; padding: 0; }
+  ul.pts li {
+    position: relative;
+    padding-left: 26px;
+    font-size: 19px;
+    line-height: 1.55;
+    margin-bottom: 16px;
+  }
+  ul.pts li:last-child { margin-bottom: 0; }
+  ul.pts li::before {
+    content: "";
+    position: absolute;
+    left: 3px; top: .62em;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  ul.pts li b { font-weight: 600; }
+  ul.pts.tight li { font-size: 16.5px; margin-bottom: 11px; }
+
+  table.t { border-collapse: collapse; width: 100%; font-size: 16px; background: var(--card); }
+  table.t th, table.t td { padding: 10px 15px; text-align: left; border-bottom: 1px solid var(--line-2); }
+  table.t thead th {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    background: var(--accent-soft);
+    border-bottom: 1px solid var(--line);
+  }
+  table.t tbody tr:last-child td { border-bottom: 0; }
+  table.t .n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tbox { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+
+  .sig {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 4px;
+  }
+  .sig.n { background: var(--go-bg);   color: var(--go); }
+  .sig.c { background: var(--warn-bg); color: var(--warn); }
+  .sig.u { background: var(--stop-bg); color: var(--stop); }
+  .sig.b { background: transparent; color: var(--dim); border: 1px dashed var(--line); }
+
+  .big {
+    font-family: var(--mono);
+    font-size: 46px;
+    font-weight: 600;
+    letter-spacing: -.02em;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .big.stop { color: var(--stop); }
+  .big.go { color: var(--go); }
+  .biglab { font-size: 14px; color: var(--dim); margin-top: 9px; line-height: 1.45; }
+
+  pre.mono {
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.72;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 0;
+    overflow: hidden;
+  }
+  pre.mono b.n { color: var(--go); }
+  pre.mono b.c { color: var(--warn); }
+  pre.mono b.u { color: var(--stop); }
+  pre.mono .hi { background: #fdf6dd; }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 15px 20px;
+    border-radius: 0 8px 8px 0;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  .callout.warn { border-left-color: var(--stop); background: var(--stop-bg); }
+  .callout b { font-weight: 600; }
+
+  .lampstrip { display: flex; gap: 5px; }
+  .lampstrip i {
+    font-style: normal;
+    width: 34px; height: 34px;
+    border-radius: 5px;
+    display: grid; place-items: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .lampstrip i.n { background: var(--go-bg);   color: var(--go); }
+  .lampstrip i.c { background: var(--warn-bg); color: var(--warn); }
+  .lampstrip i.u { background: var(--stop-bg); color: var(--stop); }
+
+  /* ── 조종 ── */
+  #hud {
+    position: fixed;
+    right: 16px; bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #7e99a3;
+    z-index: 10;
+  }
+  #hud button {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    border: 1px solid #234a58;
+    background: #0d2029;
+    color: #b9d2da;
+    font-size: 15px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  #hud button:hover { background: #14313d; }
+  #hud button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+  #hint {
+    position: fixed;
+    left: 16px; bottom: 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: #55707b;
+    z-index: 10;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div id="fit">
+  <div id="stage">
+
+    <!-- ══════════════════════════════════ 1 · 표지 -->
+    <section class="slide cover">
+      <div class="rail"><span class="no">01</span><span class="vert">Barge Weather</span></div>
+      <div class="cover-in">
+        <div>
+          <h1>바지선 운항 기상<br>판단 보드</h1>
+          <p class="lead">고현항 ↔ 중국 영성 · 난퉁 예항 항로의 기상을
+             한 화면에 모아, 어느 시각에 어느 지점이 갈 만한지
+             신호등으로 보여 줍니다.</p>
+          <div class="meta">
+            <div>대상 항로<b>영성 · CSME</b></div>
+            <div>예보 기간<b>앞으로 10일</b></div>
+            <div>갱신<b>하루 4회 자동</b></div>
+          </div>
+        </div>
+        <div class="qrcard">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" shape-rendering="crispEdges" class="segno"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#000" d="M2 2.5h7m1 0h1m2 0h5m3 0h2m1 0h7m-29 1h1m5 0h1m1 0h2m3 0h1m2 0h1m5 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m4 0h1m4 0h1m2 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h2m1 0h1m4 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h3m1 0h1m1 0h2m1 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h2m1 0h2m1 0h5m2 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h2m5 0h6m-21 1h1m1 0h2m1 0h3m2 0h2m1 0h1m1 0h5m2 0h1m2 0h1m1 0h2m-27 1h1m4 0h5m1 0h3m2 0h3m1 0h3m3 0h1m-28 1h2m3 0h2m1 0h1m3 0h1m3 0h2m2 0h1m4 0h2m-27 1h4m2 0h2m1 0h2m4 0h1m1 0h1m1 0h3m1 0h1m3 0h1m-28 1h2m1 0h4m2 0h1m1 0h1m1 0h2m1 0h3m3 0h1m1 0h2m-24 1h1m3 0h1m2 0h1m3 0h1m4 0h4m3 0h3m-29 1h1m2 0h2m1 0h2m1 0h1m1 0h3m2 0h1m1 0h3m1 0h1m1 0h1m1 0h3m-29 1h2m3 0h1m1 0h1m2 0h3m1 0h1m5 0h4m3 0h1m-25 1h1m1 0h4m2 0h1m2 0h1m1 0h1m1 0h4m1 0h3m1 0h1m-26 1h2m3 0h1m1 0h1m2 0h1m1 0h2m2 0h1m1 0h1m2 0h1m1 0h3m-28 1h1m3 0h1m1 0h2m3 0h1m1 0h5m2 0h1m1 0h3m1 0h1m-19 1h4m1 0h2m1 0h4m3 0h2m1 0h1m-26 1h1m1 0h2m1 0h1m3 0h1m2 0h2m1 0h3m1 0h7m-19 1h1m7 0h1m1 0h1m1 0h1m3 0h5m-29 1h7m1 0h1m5 0h1m2 0h4m1 0h1m1 0h2m1 0h1m-28 1h1m5 0h1m1 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h2m1 0h2m-29 1h1m1 0h3m1 0h1m3 0h1m1 0h1m4 0h1m2 0h5m1 0h2m-28 1h1m1 0h3m1 0h1m1 0h2m2 0h2m1 0h3m1 0h1m3 0h3m2 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m2 0h1m3 0h1m2 0h1m1 0h1m-29 1h1m5 0h1m2 0h4m1 0h3m3 0h1m1 0h1m1 0h2m1 0h1m-28 1h7m1 0h3m2 0h2m1 0h1m1 0h3m1 0h1m2 0h1m1 0h1"/></svg>
+          <div class="cap">tinyurl.com/barge-weather</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════ 2 · 문제 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">02</span><span class="vert">Problem</span></div>
+      <header>
+        <div class="eyebrow">왜 만들었나</div>
+        <h2 class="head">기상 정보는 흩어져 있고, 판단 기준은 사람 머릿속에 있었다</h2>
+      </header>
+      <div class="content">
+        <div class="cols c3">
+          <div class="box">
+            <h3><i>01</i>여러 곳을 뒤진다</h3>
+            <p>기상청, 해양기상, 외국 사이트를 각각 열어 풍속과 파고를
+               따로 확인합니다. <strong>항로 전체를 한눈에 보는 화면이
+               없었습니다.</strong></p>
+          </div>
+          <div class="box">
+            <h3><i>02</i>기준이 안 적혀 있다</h3>
+            <p>“이 정도면 간다”가 경험으로만 전해집니다. 담당자가 바뀌면
+               기준도 같이 흔들리고, <strong>왜 그렇게 판단했는지 남지
+               않습니다.</strong></p>
+          </div>
+          <div class="box">
+            <h3><i>03</i>특보는 너무 늦다</h3>
+            <p>풍랑주의보는 <strong>일반 선박</strong> 기준입니다.
+               동력 없이 끌려가는 바지선은 특보가 뜨기 한참 전에
+               이미 못 갑니다.</p>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:22px">
+          예보 자체는 이미 세계 최고 수준으로 공개돼 있습니다.
+          없던 것은 <b>그 숫자를 우리 배·우리 항로의 판단으로 바꿔 주는 층</b>이었습니다.
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>02 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 3 · 무엇을 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">03</span><span class="vert">Overview</span></div>
+      <header>
+        <div class="eyebrow">만든 것</div>
+        <h2 class="head">항로 위 모든 지점의 10일치 판단을 한 줄로</h2>
+        <p class="sub">출발지가 왼쪽, 도착지가 오른쪽. 어느 구간이 막혔는지 즉시 보입니다.</p>
+      </header>
+      <div class="content">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:34px;align-items:center">
+          <div>
+            <div class="lampstrip" style="margin-bottom:14px">
+              <i class="n">가</i><i class="c">조</i><i class="c">조</i><i class="n">가</i>
+              <i class="n">가</i><i class="u">불</i><i class="u">불</i><i class="c">조</i>
+              <i class="n">가</i><i class="n">가</i>
+            </div>
+            <div style="display:flex;gap:14px;font-size:15px;color:var(--dim)">
+              <span><span class="sig n">가능</span> 기준 안</span>
+              <span><span class="sig c">조건</span> 느려짐</span>
+              <span><span class="sig u">불가</span> 기다림</span>
+            </div>
+          </div>
+          <ul class="pts">
+            <li><b>다섯 가지를 동시에 본다</b> — 평균 풍속 · 순간 풍속 · 유의파고 · 시정 · 강수.
+                가장 나쁜 것을 따릅니다.</li>
+            <li><b>시간을 밀어 볼 수 있다</b> — 슬라이더를 움직이면 지도 색도 도착 예상도 같이 움직입니다.</li>
+            <li><b>왜 그 색인지 함께 보여 준다</b> — 어느 값이 걸렸는지 딱지로 붙습니다.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>03 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 4 · 자료원 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">04</span><span class="vert">Sources</span></div>
+      <header>
+        <div class="eyebrow">자료의 출처</div>
+        <h2 class="head">네 기관에서 받아 항목별로 가장 나은 것을 쓴다</h2>
+      </header>
+      <div class="content">
+        <div class="tbox">
+          <table class="t">
+            <thead><tr><th style="width:20%">기관</th><th style="width:34%">가져오는 것</th><th>왜 이걸 쓰나</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>ECMWF</strong><br><span style="font-family:var(--mono);font-size:12px;color:var(--dim)">IFS · WAM</span></td>
+                <td>풍속 · 풍향 · 돌풍 · 강수<br>유의파고 · 파향 · 파주기</td>
+                <td>중기 예보 정확도 세계 1위. 파랑 모델을 같이 돌려 파향까지 나옵니다</td>
+              </tr>
+              <tr>
+                <td><strong>NOAA</strong><br><span style="font-family:var(--mono);font-size:12px;color:var(--dim)">GFS</span></td>
+                <td>시정</td>
+                <td>ECMWF 공개본에 시정 항목이 없습니다</td>
+              </tr>
+              <tr>
+                <td><strong>MET Norway</strong></td>
+                <td>가까운 시각의 바람 보정</td>
+                <td>단기 바람 격자가 더 촘촘합니다</td>
+              </tr>
+              <tr>
+                <td><strong>대한민국 기상청</strong></td>
+                <td>해상 특보</td>
+                <td>공식 발표. 예보 수치로는 대체할 수 없습니다</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout" style="margin-top:20px">
+          넷 다 <b>공개 자료</b>이고 상업적 이용이 허용됩니다. 기상청 API 는 승인받은
+          목적 범위 안에서 하루 20,000회까지 쓸 수 있는데, 우리는 <b>하루 4회</b> 씁니다.
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>04 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 5 · 화면 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">05</span><span class="vert">Screens</span></div>
+      <header>
+        <div class="eyebrow">화면 구성</div>
+        <h2 class="head">탭 네 개. 폰에서도 PC에서도 같은 화면</h2>
+        <p class="sub">주소만 있으면 열립니다. 로그인도 설치도 없습니다.</p>
+      </header>
+      <div class="content">
+        <div class="cols c4">
+          <div class="box">
+            <h3><i>기본</i>목록</h3>
+            <p>지점마다 카드 하나. 판정과 주요 수치를 두 줄에 담았습니다.
+               눌러 들어가면 시각별 상세가 나옵니다.</p>
+          </div>
+          <div class="box">
+            <h3><i>위치</i>지도</h3>
+            <p>실제 좌표에 색을 칠하고 항로선을 그립니다.
+               거제도를 뚫지 않도록 꺾는 점까지 넣었습니다.</p>
+          </div>
+          <div class="box">
+            <h3><i>시점</i>표</h3>
+            <p>지점 × 시각 격자. <strong>언제 색이 바뀌는지</strong> 보이므로
+               출발 시점을 고를 때 씁니다.</p>
+          </div>
+          <div class="box">
+            <h3><i>근거</i>특보</h3>
+            <p>기상청 특보 원문. 언제 떴다 언제 풀리는지,
+               지난 특보 이력까지 남습니다.</p>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:22px">
+          폰에서 <b>홈 화면에 추가</b>하면 앱처럼 아이콘이 생깁니다.
+          설치가 아니라 바로가기라, 지우는 것도 아이콘을 지우면 끝입니다.
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>05 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 6 · 기준 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">06</span><span class="vert">Criteria</span></div>
+      <header>
+        <div class="eyebrow">판단 기준</div>
+        <h2 class="head">근거가 붙은 숫자로 바꿨다</h2>
+      </header>
+      <div class="content">
+        <div class="tbox">
+          <table class="t">
+            <thead><tr><th style="width:22%">보는 값</th><th class="n" style="width:13%">조건</th><th class="n" style="width:13%">불가</th><th>근거</th></tr></thead>
+            <tbody>
+              <tr><td>평균 풍속</td><td class="n">10 m/s</td><td class="n">12 m/s</td><td>예인 전용 보수값 · 기상청 풍랑주의보(14)보다 엄격</td></tr>
+              <tr><td>순간 풍속</td><td class="n">14 m/s</td><td class="n">16 m/s</td><td>평균 기준의 1.33배</td></tr>
+              <tr><td><strong>유의파고</strong></td><td class="n">1.2 m</td><td class="n">1.8 m</td><td><strong>DNV-ST-N001</strong> 외양 예항 설계환경 2.5 m × 예보오차 계수 0.71</td></tr>
+              <tr><td>시정</td><td class="n">3 km</td><td class="n">1 해리</td><td>충돌 회피에 필요한 최소 거리</td></tr>
+              <tr><td>시간 강수량</td><td class="n">5 mm/h</td><td class="n">—</td><td>시야·갑판 작업 제약</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cols c2" style="margin-top:20px">
+          <div class="callout">
+            <b>기상청보다 엄한 이유</b> — 풍랑주의보는 14 m/s · 3 m 입니다.
+            특보 기준은 일반 선박용이고, 끌려가는 바지선은 그보다 취약합니다.
+          </div>
+          <div class="callout">
+            <b>모든 값에 출처가 적혀 있습니다</b> — 설정 파일 한 곳에 모여 있고
+            숫자만 고치면 다음 수집부터 반영됩니다.
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>06 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 7 · 파향 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">07</span><span class="vert">Wave Angle</span></div>
+      <header>
+        <div class="eyebrow">이번에 새로 넣은 것</div>
+        <h2 class="head">같은 파고라도 어느 쪽에서 맞느냐가 다르다</h2>
+        <p class="sub">현장에서 나온 말입니다 — “맞바람이면 못 가는데 등바람이면 갈 수 있는 거 아니냐”</p>
+      </header>
+      <div class="content">
+        <div style="display:grid;grid-template-columns:400px 1fr;gap:28px;align-items:start">
+          <div class="tbox">
+            <table class="t">
+              <thead><tr><th>맞는 쪽</th><th class="n">불가 기준</th><th class="n">속도</th></tr></thead>
+              <tbody>
+                <tr><td><strong>맞파</strong> 앞에서</td><td class="n">1.80 m</td><td class="n" style="color:var(--stop)">−10 %</td></tr>
+                <tr><td><strong>옆파</strong> 옆에서</td><td class="n" style="color:var(--stop)">1.44 m</td><td class="n">−2 %</td></tr>
+                <tr><td><strong>등파</strong> 뒤에서</td><td class="n">2.34 m</td><td class="n" style="color:var(--go)">+5 %</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <pre class="mono">지점            파고   파향 │ 갈 때        │ 올 때
+<span class="hi">서해 남부 먼바다  1.89m    2° │ 맞파 <b class="u">불가</b>  │ 등파 <b class="c">조건</b></span>
+스다오 동방     1.89m   23° │ 맞파 <b class="u">불가</b>  │ 등파 <b class="c">조건</b>
+흑산도 북방     1.42m  346° │ 맞파 <b class="c">조건</b>  │ 등파 <b class="n">가능</b>
+영성 묘박지     1.54m   37° │ 등파 <b class="n">가능</b>  │ 맞파 <b class="c">조건</b>
+영성법인       1.54m   37° │ 옆파 <b class="u">불가</b>  │ 옆파 <b class="u">불가</b></pre>
+            <p style="font-size:15px;color:var(--dim);margin:12px 0 0;line-height:1.6">
+              같은 시각 같은 파고인데 <strong>방향에 따라 색이 갈립니다.</strong>
+              옆파는 뒤집어도 옆이라 양쪽 다 불가입니다.</p>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:18px">
+          <b>위험한 순서와 느린 순서가 다릅니다.</b> 옆파는 롤링이 커 가장 위험하지만
+          속도는 별로 안 줄고, 맞파는 가장 느리지만 옆파보다는 안전합니다.
+          그래서 계수를 두 벌로 나눠 뒀습니다.
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>07 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 8 · 선하역 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">08</span><span class="vert">Cargo Ops</span></div>
+      <header>
+        <div class="eyebrow">항해와 나눈 것</div>
+        <h2 class="head">“갈 수 있나”와 “가서 짐을 실을 수 있나”는 다른 문제</h2>
+      </header>
+      <div class="content">
+        <div class="cols c2" style="align-items:start">
+          <div>
+            <div class="tbox" style="margin-bottom:18px">
+              <table class="t">
+                <thead><tr><th>표시</th><th class="n">순간 풍속(돌풍)</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sig b">선하역주의</span></td><td class="n">10 m/s 이상</td></tr>
+                  <tr><td><span class="sig b">선하역불가</span></td><td class="n">12 m/s 이상</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <ul class="pts tight">
+              <li><b>현장에서 실제로 쓰는 기준</b>입니다. 문헌에서 끌어온 값이 아닙니다.</li>
+              <li><b>평균이 아니라 돌풍</b>을 봅니다. 매달린 화물은 순간적인 바람에 흔들립니다.</li>
+              <li>고현항은 하역, 도착지는 선적 — 둘 다 크레인 작업이라 <b>묶어서 선하역</b>입니다.</li>
+            </ul>
+          </div>
+          <div>
+            <div class="box" style="background:var(--accent-soft);border-color:#b9d7dc">
+              <h3><i>실제 사례</i>9월 9일 고현항</h3>
+              <pre class="mono" style="font-size:14px;margin:8px 0 0;background:#fff">09:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 13.7)
+12:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 13.5)
+15:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 12.4)
+18:00  항해 <b class="n">가능</b> │ 선하역 <b class="u">불가</b> (돌풍 12.6)</pre>
+              <p style="margin-top:11px">바다는 멀쩡한데 그날 낮 내내 크레인을 못 돌립니다.
+                 <strong>이런 칸이 46칸 중 28칸.</strong> 예전 화면에서는 안 보이던 것입니다.</p>
+            </div>
+            <div class="callout" style="margin-top:16px">
+              색을 이 기준으로 칠하면 “못 간다”와 “짐을 못 싣는다”가
+              같은 빨강이 됩니다. 그래서 <b>색은 항해 기준 하나로 두고</b>
+              선하역은 점선 딱지로 따로 붙였습니다.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>08 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 9 · 도착 예상 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">09</span><span class="vert">ETA</span></div>
+      <header>
+        <div class="eyebrow">도착 예상</div>
+        <h2 class="head">지나가는 시각의 예보를 그때그때 반영해 시간을 따라간다</h2>
+      </header>
+      <div class="content">
+        <div class="cols c3" style="margin-bottom:22px">
+          <div class="box"><div class="big">6.5 <span style="font-size:20px">kn</span></div>
+            <div class="biglab">예인선 + 바지선<br>기상이 좋을 때의 속력</div></div>
+          <div class="box"><div class="big">9.0 <span style="font-size:20px">kn</span></div>
+            <div class="biglab">자항선<br>기상이 좋을 때의 속력</div></div>
+          <div class="box"><div class="big go">75 <span style="font-size:20px">%</span></div>
+            <div class="biglab"><span class="sig c">조건</span> 구간을 지날 때<br>줄어드는 속력</div></div>
+        </div>
+        <div class="cols c2">
+          <ul class="pts tight">
+            <li><span class="sig u">불가</span> 구간은 <b>기상이 나아질 때까지 기다리는 것</b>으로 계산합니다 (최대 72시간)</li>
+            <li>파향에 따라 맞파는 느려지고 등파는 빨라집니다</li>
+            <li>그래서 <b>가는 길과 오는 길의 소요 시간이 다릅니다</b></li>
+          </ul>
+          <div class="callout">
+            <b>고른 방향 하나만 보여 줍니다.</b> 위에서 “고현항 → 영성”을 고르면
+            영성 向 숫자만 나옵니다. 반대쪽을 보려면 방향 단추를 바꿉니다.
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>09 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 10 · 기록 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">10</span><span class="vert">Records</span></div>
+      <header>
+        <div class="eyebrow">쌓이는 자료</div>
+        <h2 class="head">예보가 실제로 맞았는지 나중에 확인할 수 있다</h2>
+        <p class="sub">받아 온 자료를 지우지 않고 쌓아 둡니다. 이게 기준을 고칠 근거가 됩니다.</p>
+      </header>
+      <div class="content">
+        <div class="cols c3">
+          <div class="box">
+            <h3><i>2년</i>실황</h3>
+            <p>실제로 있었던 날씨. 지점 상세 맨 아래에서 봅니다.</p>
+          </div>
+          <div class="box">
+            <h3><i>1년</i>예보 이력</h3>
+            <p>그때 예보가 뭐라고 했었는지. 실황과 나란히 놓으면
+               <strong>예보가 얼마나 맞았는지</strong> 보입니다.</p>
+          </div>
+          <div class="box">
+            <h3><i>1년</i>특보 이력</h3>
+            <p>특보가 언제 떴다 언제 풀렸는지. 특보 탭 아래에 있습니다.</p>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:24px">
+          <b>이게 다음 단계입니다.</b> 실제 결항 기록이 쌓이면 “풍속 12 m/s”가
+          맞는 값인지 대조해 조정할 수 있습니다. 지금은 그 대조를 해 본 적이 없습니다.
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>10 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 11 · 운영 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">11</span><span class="vert">Operation</span></div>
+      <header>
+        <div class="eyebrow">어떻게 돌아가나</div>
+        <h2 class="head">사람 손이 들어가지 않는다</h2>
+      </header>
+      <div class="content">
+        <div class="cols c4" style="margin-bottom:24px">
+          <div class="box"><div class="big">4<span style="font-size:20px">회</span></div>
+            <div class="biglab">하루 자동 수집<br>05:15 · 09:15 · 17:15 · 21:15</div></div>
+          <div class="box"><div class="big">10<span style="font-size:20px">일</span></div>
+            <div class="biglab">앞으로 보는<br>예보 기간</div></div>
+          <div class="box"><div class="big">17<span style="font-size:20px">곳</span></div>
+            <div class="biglab">항로 위 지점<br>부두 4 · 묘박지 2 · 항로점 11</div></div>
+          <div class="box"><div class="big go">0<span style="font-size:20px">원</span></div>
+            <div class="biglab">운영 비용<br>모두 무료 공개 자료</div></div>
+        </div>
+        <ul class="pts tight">
+          <li><b>수집 시각은 예보 모델이 나오는 때에 맞췄습니다</b> — 전 세계 모델이 하루 네 번 나오는데, 그게 다 나온 직후를 노립니다.</li>
+          <li><b>자료를 통째로 받지 않습니다</b> — 필요한 항목의 위치만 찾아 그 부분만 내려받습니다. 원본 140 MB 중 4 MB 만 받습니다.</li>
+          <li><b>화면 갱신도 자동입니다</b> — 수집이 끝나면 웹 화면이 저절로 새로 만들어집니다.</li>
+        </ul>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>11 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 12 · 한계 -->
+    <section class="slide" hidden>
+      <div class="rail"><span class="no">12</span><span class="vert">Limits</span></div>
+      <header>
+        <div class="eyebrow">정직하게</div>
+        <h2 class="head">아직 검증되지 않은 것들</h2>
+      </header>
+      <div class="content">
+        <div class="callout warn" style="margin-bottom:20px;font-size:18px">
+          이 화면은 <b>판단을 돕는 자료</b>이지 판단 자체가 아닙니다.
+          최종 결정은 선장과 현장 책임자의 몫입니다.
+        </div>
+        <div class="cols c2">
+          <div class="box">
+            <h3><i>대조 전</i>우리가 정한 값</h3>
+            <ul class="pts tight" style="margin-top:6px">
+              <li><b>풍속 12 m/s</b> — 실제 결항 기록과 맞춰 본 적이 없습니다</li>
+              <li><b>파향 계수</b> — 한국선급 부가저항표로 계산했고, 등파에서 빨라진다는 결과가 선원 증언과 맞아 채택했습니다</li>
+              <li><b>예인선 제원</b> — 볼라드 풀 50 t 등은 전형값으로 가정한 것입니다</li>
+            </ul>
+          </div>
+          <div class="box">
+            <h3><i>구조적</i>어쩔 수 없는 것</h3>
+            <ul class="pts tight" style="margin-top:6px">
+              <li><b>예보는 예보입니다</b> — 5일 넘으면 참고 수준. 그래서 파고 기준에 오차 계수를 이미 곱해 뒀습니다</li>
+              <li><b>조류·조석은 안 봅니다</b> — 좁은 수로에서 크게 작용합니다</li>
+              <li><b>중국 해역은 특보가 없습니다</b> — 기상청 특보는 한국 관할 해역만 나옵니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>바지선 운항 기상 판단 보드</span><span>12 / 13</span></div>
+    </section>
+
+    <!-- ══════════════════════════════════ 13 · 접속 -->
+    <section class="slide cover" hidden>
+      <div class="rail"><span class="no">13</span><span class="vert">Access</span></div>
+      <div class="cover-in">
+        <div>
+          <div class="eyebrow">지금 열어 보세요</div>
+          <h1 style="font-size:54px">폰 카메라로<br>찍으면 바로 열립니다</h1>
+          <p class="lead">로그인도 설치도 없습니다. 사이트 안 오른쪽 위
+             <strong>QR</strong> 단추를 누르면 이 화면이 다시 나오니,
+             옆 사람에게 보여 주기만 하면 됩니다.</p>
+          <div class="meta">
+            <div>주소<b>tinyurl.com/barge-weather</b></div>
+            <div>폰에 두기<b>공유 → 홈 화면에 추가</b></div>
+          </div>
+        </div>
+        <div class="qrcard">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" shape-rendering="crispEdges" class="segno"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#000" d="M2 2.5h7m1 0h1m2 0h5m3 0h2m1 0h7m-29 1h1m5 0h1m1 0h2m3 0h1m2 0h1m5 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m4 0h1m4 0h1m2 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h1m1 0h2m1 0h1m4 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m3 0h3m1 0h1m1 0h2m1 0h1m2 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m2 0h2m1 0h2m1 0h5m2 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h2m5 0h6m-21 1h1m1 0h2m1 0h3m2 0h2m1 0h1m1 0h5m2 0h1m2 0h1m1 0h2m-27 1h1m4 0h5m1 0h3m2 0h3m1 0h3m3 0h1m-28 1h2m3 0h2m1 0h1m3 0h1m3 0h2m2 0h1m4 0h2m-27 1h4m2 0h2m1 0h2m4 0h1m1 0h1m1 0h3m1 0h1m3 0h1m-28 1h2m1 0h4m2 0h1m1 0h1m1 0h2m1 0h3m3 0h1m1 0h2m-24 1h1m3 0h1m2 0h1m3 0h1m4 0h4m3 0h3m-29 1h1m2 0h2m1 0h2m1 0h1m1 0h3m2 0h1m1 0h3m1 0h1m1 0h1m1 0h3m-29 1h2m3 0h1m1 0h1m2 0h3m1 0h1m5 0h4m3 0h1m-25 1h1m1 0h4m2 0h1m2 0h1m1 0h1m1 0h4m1 0h3m1 0h1m-26 1h2m3 0h1m1 0h1m2 0h1m1 0h2m2 0h1m1 0h1m2 0h1m1 0h3m-28 1h1m3 0h1m1 0h2m3 0h1m1 0h5m2 0h1m1 0h3m1 0h1m-19 1h4m1 0h2m1 0h4m3 0h2m1 0h1m-26 1h1m1 0h2m1 0h1m3 0h1m2 0h2m1 0h3m1 0h7m-19 1h1m7 0h1m1 0h1m1 0h1m3 0h5m-29 1h7m1 0h1m5 0h1m2 0h4m1 0h1m1 0h2m1 0h1m-28 1h1m5 0h1m1 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h2m1 0h2m-29 1h1m1 0h3m1 0h1m3 0h1m1 0h1m4 0h1m2 0h5m1 0h2m-28 1h1m1 0h3m1 0h1m1 0h2m2 0h2m1 0h3m1 0h1m3 0h3m2 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m2 0h1m3 0h1m2 0h1m1 0h1m-29 1h1m5 0h1m2 0h4m1 0h3m3 0h1m1 0h1m1 0h2m1 0h1m-28 1h7m1 0h3m2 0h2m1 0h1m1 0h3m1 0h1m2 0h1m1 0h1"/></svg>
+          <div class="cap">tinyurl.com/barge-weather</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div id="hint">← → 또는 화면 클릭으로 넘김 · F 전체화면</div>
+<div id="hud">
+  <button id="prev" type="button" aria-label="이전 장">‹</button>
+  <span id="counter">1 / 13</span>
+  <button id="next" type="button" aria-label="다음 장">›</button>
+  <button id="full" type="button" aria-label="전체화면">⛶</button>
+</div>
+
+<script>
+(function () {
+  var stage = document.getElementById("stage");
+  var slides = [].slice.call(stage.querySelectorAll(".slide"));
+  var counter = document.getElementById("counter");
+  var at = 0;
+
+  /* 어떤 화면에서 열든 1280x720 비율 그대로 나오도록 통째로 줄인다.
+     프로젝터가 1280x720 이면 딱 1배가 된다. */
+  function fit() {
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = "scale(" + s + ")";
+  }
+
+  function show(n) {
+    at = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (el, i) { el.hidden = (i !== at); });
+    counter.textContent = (at + 1) + " / " + slides.length;
+  }
+
+  document.getElementById("prev").onclick = function (e) { e.stopPropagation(); show(at - 1); };
+  document.getElementById("next").onclick = function (e) { e.stopPropagation(); show(at + 1); };
+  document.getElementById("full").onclick = function (e) {
+    e.stopPropagation();
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  };
+
+  /* 화면 오른쪽 절반을 누르면 다음, 왼쪽 절반이면 이전.
+     발표 중에 마우스를 정확히 조준하지 않아도 되게 하려는 것이다. */
+  document.getElementById("fit").addEventListener("click", function (e) {
+    show(e.clientX > window.innerWidth / 2 ? at + 1 : at - 1);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    var k = e.key;
+    if (k === "ArrowRight" || k === "PageDown" || k === " ") { e.preventDefault(); show(at + 1); }
+    else if (k === "ArrowLeft" || k === "PageUp") { e.preventDefault(); show(at - 1); }
+    else if (k === "Home") { e.preventDefault(); show(0); }
+    else if (k === "End") { e.preventDefault(); show(slides.length - 1); }
+    else if (k === "f" || k === "F") {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    }
+  });
+
+  window.addEventListener("resize", fit);
+  fit();
+  show(0);
+})();
+</script>
