@@ -63,9 +63,31 @@
 
   /* 항목 하나의 색을 한계값과 비교해 정한다.
      값이 클수록 나쁜 항목과 작을수록 나쁜 항목(시정)을 나눠 본다. */
-  function metricStatus(key, value) {
-    if (value === null || value === undefined) return "x";
+  /* 그 지점·그 시각에 실제로 적용되는 기준값.
+
+     파고만 파향에 따라 달라진다(옆파는 0.8배로 더 엄격). 판정은 이미
+     그렇게 계산하는데 항목별 색은 기본 기준을 보고 있어서, 옆파에서
+     "파고 칸은 노랑인데 판정은 빨강" 인 화면이 나왔다. 같은 기준을
+     보게 맞춘다. locId 를 안 넘기면 예전처럼 기본 기준을 쓴다. */
+  function limitsFor(key, locId, idx) {
     var t = META.thresholds[key];
+    if (!t || key !== "wave" || locId === undefined || locId === null) return t;
+    var sf = (META.wave_direction || {}).safety_factor;
+    if (!sf) return t;
+    var f = sf[waveSideAt(locId, idx)];
+    if (!f || f === 1) return t;
+    return {
+      auto: t.auto,
+      caution_at: t.caution_at === null ? null : Math.round(t.caution_at * f * 100) / 100,
+      unavailable_at: t.unavailable_at === null ? null : Math.round(t.unavailable_at * f * 100) / 100,
+      caution_below: t.caution_below,
+      unavailable_below: t.unavailable_below
+    };
+  }
+
+  function metricStatus(key, value, locId, idx) {
+    if (value === null || value === undefined) return "x";
+    var t = limitsFor(key, locId, idx);
     if (!t || t.auto === false) return "n";
     if (t.unavailable_at !== null && t.unavailable_at !== undefined
         && value >= t.unavailable_at) return "u";
@@ -117,6 +139,10 @@
 
   /* 선하역 기준이 보는 값과 화면 이름의 짝.
      설정(berthing_thresholds)에 적힌 이름을 시리즈 이름으로 옮긴다. */
+  /* 파도를 맞는 쪽의 짧은 이름. 기준 글 뒤에 붙여
+     "불가 1.44m 옆파" 처럼 왜 그 숫자인지 보이게 한다. */
+  var SIDE_LABEL = { head: "맞파", beam: "옆파", following: "등파" };
+
   var BERTH_KEY = {
     wind_speed_ms: "wind",
     wind_gust_ms: "gust",
@@ -226,16 +252,19 @@
       }
       var unit = META.units[k] || "";
       var tail = "";
-      var t = META.thresholds[k];
+      /* 파고는 파향에 따라 기준이 달라지므로 실제 적용값을 적는다.
+         기본값(1.8)을 적어 두면 1.77 이 "불가" 인 이유를 알 수 없다. */
+      var t = limitsFor(k, locId, idx);
       if (t && t.auto !== false) {
         /* "불가 기준" 대신 "불가". 앞에 / 가 있어 뜻이 통하고,
            팝업 한 줄이 폰 화면에 들어가려면 글자를 아껴야 한다. */
         if (t.unavailable_at !== null && t.unavailable_at !== undefined) {
           tail += " / 불가 " + t.unavailable_at + unit;
+          if (k === "wave") tail += " " + SIDE_LABEL[waveSideAt(locId, idx)];
         } else if (t.unavailable_below !== null && t.unavailable_below !== undefined) {
           tail += " / 불가 " + t.unavailable_below + unit + " 미만";
         }
-        tail += " (" + META.metric_status_labels[metricStatus(k, v)] + ")";
+        tail += " (" + META.metric_status_labels[metricStatus(k, v, locId, idx)] + ")";
       }
       out.push({ head: META.labels[k] + ": ", value: v + unit, tail: tail });
     }
@@ -309,7 +338,7 @@
           rows.appendChild(el("span", "wx-v", "—"));
           return;
         }
-        var vv = el("span", "wx-v s-" + metricStatus(k, v));
+        var vv = el("span", "wx-v s-" + metricStatus(k, v, locId, idx));
         vv.textContent = v + (META.units[k] || "");
         if (k === "wind" && s.wdir && s.wdir[idx] !== null) {
           vv.textContent += " " + compass(s.wdir[idx]);
@@ -1090,7 +1119,7 @@
         [["wind", "풍속"], ["gust", "돌풍"], ["wave", "파고"], ["vis", "시정"]]
           .forEach(function (p) {
             var k = p[0], v = s[k] ? s[k][i] : null;
-            var chip = el("span", "tfac s-" + (v === null ? "x" : metricStatus(k, v)));
+            var chip = el("span", "tfac s-" + (v === null ? "x" : metricStatus(k, v, locId, i)));
             chip.textContent = p[1] + " " + (v === null ? "—" : num(v));
             factors.appendChild(chip);
           });
@@ -1112,7 +1141,7 @@
         }
       } else {
         var v = s[m.key] ? s[m.key][i] : null;
-        st = metricStatus(m.key, v);
+        st = metricStatus(m.key, v, locId, i);
         main = (v === null ? "데이터 없음" : num(v) + " " + m.unit);
         if (m.dir && s[m.dir] && s[m.dir][i] !== null) {
           sub = compass(s[m.dir][i]) + " " + s[m.dir][i] + "°";
@@ -1224,7 +1253,7 @@
           text = META.status_labels[st];
         } else {
           var v = s && s[m.key] ? s[m.key][i] : null;
-          st = metricStatus(m.key, v);
+          st = metricStatus(m.key, v, locId, i);
           text = v === null ? "—" : num(v);
           if (m.dir && s && s[m.dir] && s[m.dir][i] !== null) {
             text += " " + compass(s[m.dir][i]);
