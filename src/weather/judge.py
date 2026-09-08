@@ -426,11 +426,19 @@ def adjusted_thresholds(config: Config, side: str | None = None) -> dict[str, An
 
 def berthing_status(config: Config, values: dict[str, Any],
                     loc_type: str | None) -> str | None:
-    """접안·하역을 할 수 있는 상태인지. 항만·터미널에서만 뜻이 있다.
+    """선하역(짐 싣고 내리기)을 할 수 있는 상태인지.
+
+    고현항에서는 하역, 도착지에서는 선적을 하는데 둘 다 크레인 작업이라
+    기준이 같다. 부두(terminal) 네 곳에서만 뜻이 있다.
+    묘박지와 항로점에는 크레인이 없으므로 None 이 나온다.
 
     ★ 이 값은 화면 색(운항 판단)과 섞지 않는다.
-      색은 "거기까지 갈 수 있나" 하나만 뜻하고, 이건 "가서 짐을 내릴 수
-      있나" 라서 다른 이야기다. 화면에는 작은 표시로 따로 붙인다.
+      색은 "거기까지 갈 수 있나" 하나만 뜻하고, 이건 "가서 짐을 싣고
+      내릴 수 있나" 라서 다른 이야기다. 화면에는 작은 표시로 따로 붙인다.
+
+    어떤 값을 볼지는 설정이 정한다. 지금은 순간풍속(돌풍) 하나만 본다.
+    항목을 늘리려면 berthing_thresholds 에 줄을 더하면 되고,
+    여러 개면 그중 가장 나쁜 것을 따른다.
 
     돌려주는 값: 'n'(가능) / 'c'(주의) / 'u'(곤란) / None(해당 없음)
     """
@@ -439,10 +447,11 @@ def berthing_status(config: Config, values: dict[str, Any],
         return None
 
     worst = NORMAL
-    for column in ("wave_height_m", "wind_speed_ms"):
-        limits = rule.get(column) or {}
+    for column, limits in rule.items():
+        if column in ("applies_to", "basis") or not isinstance(limits, dict):
+            continue
         value = values.get(column)
-        if value is None or not limits:
+        if value is None:
             continue
         if limits.get("unavailable_at") is not None and value >= limits["unavailable_at"]:
             status = UNAVAILABLE

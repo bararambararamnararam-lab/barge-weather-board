@@ -104,9 +104,11 @@
     return arr ? arr[idx] : "x";
   }
 
-  /* 접안·하역을 할 수 있는 상태인지. 항만·터미널에서만 값이 있다.
+  /* 짐을 싣고 내릴 수 있는 상태인지. 부두 네 곳에만 값이 있다.
+     기준은 순간풍속(돌풍) 10 / 12 m/s 다. 크레인에 매달린 화물이
+     순간적인 돌풍에 흔들리기 때문에 평균 풍속이 아니라 돌풍을 본다.
      ★ 색(운항 판단)과 섞지 않는다. 색은 "거기까지 갈 수 있나" 이고
-       이건 "가서 짐을 내릴 수 있나" 라 다른 이야기다. */
+       이건 "가서 짐을 싣고 내릴 수 있나" 라 다른 이야기다. */
   function berthOf(locId, idx) {
     var s = series(locId);
     if (!s || !s.berth) return null;
@@ -264,7 +266,8 @@
     var bth = berthOf(locId, idx);
     if (bth && bth !== "n") {
       box.appendChild(el("div", "wx-berth s-" + bth,
-        bth === "u" ? "하역 불가 (접안 기준)" : "하역 주의 (접안 기준)"));
+        bth === "u" ? "선하역 불가 (돌풍 12 m/s↑)"
+                    : "선하역 주의 (돌풍 10 m/s↑)"));
     }
 
     var ws = warningsAt(locId, idx);
@@ -445,13 +448,14 @@
           "card-warn " + (worstW.lvl === "경보" ? "s-u" : "s-c"), wtext));
       }
 
-      /* 항만·터미널이면 하역 가능 여부를 따로 붙인다.
+      /* 부두면 짐을 싣고 내릴 수 있는지 따로 붙인다.
+         고현항은 하역, 도착지는 선적이라 묶어서 '선하역' 이라 부른다.
          색(운항 판단)과 섞지 않는다. 색은 "거기까지 갈 수 있나" 이고
-         이건 "가서 짐을 내릴 수 있나" 라 다른 이야기다. */
+         이건 "가서 짐을 싣고 내릴 수 있나" 라 다른 이야기다. */
       var bth = berthOf(locId, idx);
       if (bth && bth !== "n") {
         top.appendChild(el("div", "card-berth s-" + bth,
-          bth === "u" ? "하역불가" : "하역주의"));
+          bth === "u" ? "선하역불가" : "선하역주의"));
       }
 
       top.appendChild(el("div", "card-badge s-" + st, META.status_labels[st]));
@@ -972,7 +976,7 @@
         var bthRow = berthOf(locId, i);
         if (bthRow && bthRow !== "n") {
           factors.appendChild(el("span", "tfac s-" + bthRow,
-            bthRow === "u" ? "하역불가" : "하역주의"));
+            bthRow === "u" ? "선하역불가" : "선하역주의"));
         }
         var wsRow = warningsAt(locId, i);
         if (wsRow.length) {
@@ -1181,6 +1185,18 @@
         + "옆파 " + (u * (wd.beam || 1)).toFixed(2) + "m · "
         + "등파 " + (u * (wd.following || 1)).toFixed(2) + "m 에서 불가. "
         + "옆에서 맞으면 흔들림이 커 가장 엄격합니다."));
+    }
+
+    /* 선하역은 색과 뜻이 달라서 따로 설명한다. 안 그러면 초록인데
+       '선하역불가' 가 붙은 걸 보고 헷갈린다. */
+    var bg = (META.berthing || {}).wind_gust_ms;
+    if (bg) {
+      box.appendChild(el("p", "legend-note",
+        "선하역(짐 싣고 내리기)은 따로 봅니다 — 순간풍속 "
+        + bg.caution_at + "m/s 이상 주의 · " + bg.unavailable_at
+        + "m/s 이상 불가. 고현항·영성법인·영성가야·CSME 에만 표시하며, "
+        + "색(운항 판단)과는 별개입니다. 갈 수는 있어도 "
+        + "짐을 못 싣는 때가 있습니다."));
     }
   }
 
