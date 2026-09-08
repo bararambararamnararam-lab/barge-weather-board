@@ -115,6 +115,61 @@
     return s.berth[idx] || null;
   }
 
+  /* 선하역 기준이 보는 값과 화면 이름의 짝.
+     설정(berthing_thresholds)에 적힌 이름을 시리즈 이름으로 옮긴다. */
+  var BERTH_KEY = {
+    wind_speed_ms: "wind",
+    wind_gust_ms: "gust",
+    wave_height_m: "wave"
+  };
+
+  /* 설정에 적힌 선하역 기준만 골라 준다.
+     applies_to(목록)와 basis(글)는 기준이 아니므로 건너뛴다. */
+  function berthRules() {
+    var rule = META.berthing || {};
+    var out = [];
+    Object.keys(rule).forEach(function (col) {
+      var lim = rule[col];
+      var key = BERTH_KEY[col];
+      if (!key || !lim || typeof lim !== "object" || lim.caution_at === undefined) return;
+      out.push({ col: col, key: key, lim: lim });
+    });
+    return out;
+  }
+
+  /* 왜 그 표시가 떴는지. "돌풍 16.2m/s" 처럼 실제 값을 돌려준다.
+
+     기준값을 글에 박아 두면 설정을 고칠 때마다 화면 글이 어긋난다.
+     실제로 한 번 어긋났었다. 그래서 설정에서 읽어 만든다. */
+  function berthReason(locId, idx) {
+    var s = series(locId);
+    if (!s) return "";
+    var best = null;
+    berthRules().forEach(function (r) {
+      var arr = s[r.key];
+      if (!arr) return;
+      var v = arr[idx];
+      if (v === null || v === undefined) return;
+      var lvl = 0;
+      if (r.lim.unavailable_at !== null && r.lim.unavailable_at !== undefined
+          && v >= r.lim.unavailable_at) lvl = 2;
+      else if (r.lim.caution_at !== null && r.lim.caution_at !== undefined
+          && v >= r.lim.caution_at) lvl = 1;
+      if (!lvl) return;
+      /* 더 나쁜 것, 같은 등급이면 기준을 더 많이 넘은 것 */
+      var over = v / (lvl === 2 ? r.lim.unavailable_at : r.lim.caution_at);
+      if (!best || lvl > best.lvl || (lvl === best.lvl && over > best.over)) {
+        best = { lvl: lvl, over: over, key: r.key, v: v };
+      }
+    });
+    if (!best) return "";
+    /* 자료에 따라 소수 둘째 자리까지 오는 값이 있어 글이 길어진다.
+       한 자리로 맞추되 정수는 소수점을 안 붙인다. */
+    var shown = Math.round(best.v * 10) / 10;
+    return (META.labels[best.key] || best.key) + " "
+      + shown + (META.units[best.key] || "");
+  }
+
   /* 파도를 어느 쪽에서 맞는지. 소요 시간 계산에 쓴다. */
   function waveSideAt(locId, idx) {
     var route = routeObj();
@@ -266,8 +321,8 @@
     var bth = berthOf(locId, idx);
     if (bth && bth !== "n") {
       box.appendChild(el("div", "wx-berth s-" + bth,
-        bth === "u" ? "선하역 불가 (돌풍 12 m/s↑)"
-                    : "선하역 주의 (돌풍 10 m/s↑)"));
+        (bth === "u" ? "선하역 불가" : "선하역 주의")
+        + (berthReason(locId, idx) ? " (" + berthReason(locId, idx) + ")" : "")));
     }
 
     var ws = warningsAt(locId, idx);
@@ -1255,14 +1310,30 @@
 
     /* 선하역은 색과 뜻이 달라서 따로 설명한다. 안 그러면 초록인데
        '선하역불가' 가 붙은 걸 보고 헷갈린다. */
-    var bg = (META.berthing || {}).wind_gust_ms;
-    if (bg) {
-      box.appendChild(el("p", "legend-note",
-        "선하역(짐 싣고 내리기)은 따로 봅니다 — 순간풍속 "
-        + bg.caution_at + "m/s 이상 주의 · " + bg.unavailable_at
-        + "m/s 이상 불가. 고현항·영성법인·영성가야·CSME 에만 표시하며, "
+    var brs = berthRules();
+    if (brs.length) {
+      /* 보는 값이 여럿이면 "평균 풍속·순간 풍속" 처럼 이어 붙인다.
+         기준값이 다 같으면 한 번만 적어 글이 짧아진다. */
+      var names = brs.map(function (r) { return META.labels[r.key] || r.key; });
+      var same = brs.every(function (r) {
+        return r.lim.caution_at === brs[0].lim.caution_at
+            && r.lim.unavailable_at === brs[0].lim.unavailable_at;
+      });
+      var txt = "선하역(짐 싣고 내리기)은 따로 봅니다 — ";
+      if (same) {
+        txt += names.join("·") + " 어느 쪽이든 "
+          + brs[0].lim.caution_at + "m/s 이상 주의 · "
+          + brs[0].lim.unavailable_at + "m/s 이상 불가";
+      } else {
+        txt += brs.map(function (r, i) {
+          return names[i] + " " + r.lim.caution_at + "/"
+            + r.lim.unavailable_at + (META.units[r.key] || "");
+        }).join(" · ");
+      }
+      txt += ". 고현항·영성법인·영성가야·CSME 에만 표시하며, "
         + "색(운항 판단)과는 별개입니다. 갈 수는 있어도 "
-        + "짐을 못 싣는 때가 있습니다."));
+        + "짐을 못 싣는 때가 있습니다.";
+      box.appendChild(el("p", "legend-note", txt));
     }
   }
 
